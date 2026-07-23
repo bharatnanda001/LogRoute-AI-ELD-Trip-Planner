@@ -1,0 +1,178 @@
+/* src/index.css — 🎨 LogRoute AI Design System v2.0 (Stripe × Linear × Vercel × Raycast Aesthetic) */
+@import "tailwindcss";
+
+/* Global Reset & Base Typography */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #f8fafc;
+  color: #0f172a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Custom Clean Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Design System v2.0 Utility Classes
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* 1. Cards (Radius 16px, Soft Elevation, Hover Shadow) */
+.saas-card-v2 {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+  transition: all 200ms ease;
+}
+
+.saas-card-v2:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+/* 2. Buttons (Radius 12px, Enterprise Blue #2563EB) */
+.saas-btn-primary {
+  background-color: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: 12px;
+  padding: 0.625rem 1.25rem;
+  transition: all 150ms ease;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
+}
+
+.saas-btn-primary:hover {
+  background-color: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+}
+
+.saas-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.saas-btn-secondary {
+  background-color: #ffffff;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: 12px;
+  padding: 0.625rem 1.25rem;
+  transition: all 150ms ease;
+}
+
+.saas-btn-secondary:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.saas-btn-danger {
+  background-color: #dc2626;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 0.875rem;
+  border-radius: 12px;
+  padding: 0.625rem 1.25rem;
+  transition: all 150ms ease;
+}
+
+.saas-btn-danger:hover {
+  background-color: #b91c1c;
+}
+
+/* 3. Inputs & Forms */
+.saas-input-v2 {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  color: #0f172a;
+  outline: none;
+  transition: all 150ms ease;
+}
+
+.saas-input-v2:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+/* 4. Soft State Banners & Badges */
+.saas-badge-success {
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+}
+
+.saas-badge-warning {
+  background-color: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+}
+
+.saas-badge-error {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+}
+
+.saas-badge-info {
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+  font-weight: 600;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+}
+
+/* 5. Special Duty Badges (§395.28) */
+.badge-pc {
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+
+.badge-ym {
+  background-color: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}

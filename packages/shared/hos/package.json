@@ -1,0 +1,13 @@
+{
+  "name": "@eld/shared-hos",
+  "version": "1.0.0",
+  "description": "Shared FMCSA 49 CFR Part 395 Hours of Service Compliance Engine",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 0"
+  },
+  "keywords": ["eld", "fmcsa", "hos", "trucking", "compliance"],
+  "author": "LogRoute AI Team",
+  "license": "ISC"
+}

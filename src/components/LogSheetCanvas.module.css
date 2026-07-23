@@ -1,0 +1,124 @@
+/* LogSheetCanvas.module.css — FMCSA daily-log grid styles */
+
+/* ── Container ───────────────────────────────────────── */
+.canvasContainer {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 16px;
+  overflow-x: auto;
+}
+
+.svgCanvas {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  min-width: 0;
+  height: auto;
+}
+
+/* ── Header / title ──────────────────────────────────── */
+.title {
+  font-size: 15px;
+  font-weight: 800;
+  fill: #0f172a;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.headerMeta {
+  font-size: 11px;
+  fill: #475569;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Time-axis labels ────────────────────────────────── */
+.timeLabel {
+  font-size: 10px;
+  font-weight: 700;
+  fill: #334155;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  text-anchor: middle;
+}
+
+/* ── Row labels (Off Duty, Sleeper Berth …) ──────────── */
+.rowLabel {
+  font-size: 11px;
+  font-weight: 700;
+  fill: #1e293b;
+  text-anchor: end;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Grid lines & sub-ticks ──────────────────────────── */
+.gridLine {
+  stroke: #cbd5e1;
+  stroke-width: 1;
+}
+
+.rowBorder {
+  stroke: #94a3b8;
+  stroke-width: 1;
+}
+
+.subTick {
+  stroke: #cbd5e1;
+  stroke-width: 0.75;
+}
+
+/* ── Duty-status continuous polyline ─────────────────── */
+.dutyPolyline {
+  fill: none !important;
+  stroke: #0f172a;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.continuousPath {
+  fill: none !important;
+  stroke: #0f172a;
+  stroke-width: 3;
+}
+
+/* ── Remarks & Annotations ───────────────────────────── */
+.remarkTick {
+  stroke: #64748b;
+  stroke-width: 1.5;
+}
+
+.remarkText {
+  font-size: 9px;
+  font-weight: 600;
+  fill: #334155;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ── Totals ─────────────────────────────────────────── */
+.totalHour {
+  font-size: 11px;
+  font-weight: 800;
+  fill: #0f172a;
+  font-family: monospace;
+  text-anchor: middle;
+}
+
+.totalCircle {
+  fill: #f1f5f9;
+  stroke: #6366f1;
+  stroke-width: 2;
+}
+
+.totalLabel {
+  font-size: 9px;
+  font-weight: 700;
+  fill: #64748b;
+  text-anchor: middle;
+}
+
+.mileagePlaceholder {
+  font-size: 10px;
+  font-weight: 700;
+  fill: #64748b;
+}
