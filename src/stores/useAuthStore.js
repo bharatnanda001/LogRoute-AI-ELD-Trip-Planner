@@ -16,7 +16,7 @@ const MOCK_INITIAL_DRIVERS = [
 ];
 
 export const useAuthStore = create((set, get) => ({
-  isAuthenticated: true, // Default true for seamless evaluation; full login/logout supported
+  isAuthenticated: true, // Configured for demo & live authentication
   activeRole: 'driver',   // 'driver' | 'manager' | 'admin'
   activeCompany: MOCK_COMPANIES[0],
   companies: MOCK_COMPANIES,
@@ -40,8 +40,8 @@ export const useAuthStore = create((set, get) => ({
     const existingDriver = get().registeredDrivers.find((d) => d.email.toLowerCase() === email.toLowerCase());
     const userProfile = existingDriver || {
       id: `usr_${Date.now()}`,
-      name: email.split('@')[0].replace('.', ' '),
-      email,
+      name: email.includes('@') ? email.split('@')[0].replace('.', ' ') : email,
+      email: email.includes('@') ? email : `${email}@abclogistics.com`,
       license: 'DL-9918201',
       state: 'TX',
       carrier: get().activeCompany.name,

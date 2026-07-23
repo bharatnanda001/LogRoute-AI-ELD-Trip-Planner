@@ -1,7 +1,7 @@
 // src/App.jsx
 // ═══════════════════════════════════════════════════════════════════
 // ELD Trip Planner — Master App Container & State Orchestrator
-// Strict Role-Based Access Control (RBAC) View Isolation
+// Dedicated Full-Screen Login Page & Strict RBAC View Isolation
 // ═══════════════════════════════════════════════════════════════════
 
 import React, { useEffect, useState } from 'react';
@@ -16,6 +16,7 @@ import RouteMap from './components/RouteMap';
 import LogHistory from './components/LogHistory';
 import AICopilotModal from './components/AICopilotModal';
 import AuthModal from './components/auth/AuthModal';
+import AuthPage from './components/auth/AuthPage';
 import RecapScreen from './components/hos/RecapScreen';
 import DVIRForm from './components/reports/DVIRForm';
 import EditHistoryPanel from './components/timeline/EditHistoryPanel';
@@ -35,7 +36,7 @@ import { useTripStore } from './stores/useTripStore';
 import { useUiStore } from './stores/useUiStore';
 
 function App() {
-  const { activeRole, setActiveRole, activeCompany, setActiveCompany, companies, user } = useAuthStore();
+  const { isAuthenticated, activeRole, setActiveRole, activeCompany, setActiveCompany, companies, user } = useAuthStore();
   const { activeTab, setActiveTab, isAiCopilotOpen, setIsAiCopilotOpen } = useUiStore();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
@@ -134,6 +135,11 @@ function App() {
     setActiveTab('daily_log');
   };
 
+  // If not logged in, render dedicated full-screen AuthPage
+  if (!isAuthenticated) {
+    return <AuthPage onLoginSuccess={() => {}} />;
+  }
+
   // Determine current active view based on user role
   const isDriverAccess = user?.role === 'driver' || activeRole === 'driver';
   const isManagerAccess = activeRole === 'manager' || (user?.role === 'manager' && activeRole !== 'driver');
@@ -155,7 +161,7 @@ function App() {
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-8">
         
-        {/* Driver Interface Navigation Tabs (Visible strictly in Driver Portal) */}
+        {/* Driver Interface Navigation Tabs */}
         {isDriverAccess && (
           <div className="hidden md:flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-1.5 shadow-xs">
             <div className="flex items-center gap-1 flex-wrap">
@@ -261,7 +267,7 @@ function App() {
         timelineBlocks={timelineBlocks}
       />
 
-      {/* Mobile Bottom Navigation (Driver Mode Only) */}
+      {/* Mobile Bottom Navigation */}
       {isDriverAccess && (
         <MobileBottomNav activeTab={activeTab} onSelectTab={setActiveTab} />
       )}
