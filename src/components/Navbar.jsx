@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Truck, Shield, Building2, UserCheck, Bot, Bell, Clock, Radio, AlertTriangle, ShieldAlert, CheckCircle2, FileCheck, X } from 'lucide-react';
+import { Truck, Shield, Building2, UserCheck, Bot, Bell, Clock, Radio, AlertTriangle, ShieldAlert, CheckCircle2, FileCheck, X, LogIn, User } from 'lucide-react';
 import useRealTime from '../hooks/useRealTime';
+import { useAuthStore } from '../stores/useAuthStore';
 
 export default function Navbar({
   activeRole,
@@ -9,8 +10,10 @@ export default function Navbar({
   onCompanyChange,
   companies = [],
   onOpenAiCopilot,
+  onOpenAuthModal,
 }) {
   const timeInfo = useRealTime();
+  const { user, isAuthenticated, logout } = useAuthStore();
   const [showNotifications, setShowNotifications] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -58,7 +61,7 @@ export default function Navbar({
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         {/* Brand & Logo */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shadow-blue-600/30">
+          <div className="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
             <Truck size={20} />
           </div>
           <div>
@@ -103,7 +106,7 @@ export default function Navbar({
           </select>
         </div>
 
-        {/* Right Actions: Role Selector, AI Copilot, Notifications */}
+        {/* Right Actions: Role Selector, Account Login/Sign Up, AI Copilot, Notifications */}
         <div className="flex items-center gap-3">
           {/* Role Switcher Pills */}
           <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80">
@@ -130,6 +133,16 @@ export default function Navbar({
               );
             })}
           </div>
+
+          {/* Account Login / Sign Up Trigger Button */}
+          <button
+            onClick={onOpenAuthModal}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+            title="Sign In / Register Driver Account"
+          >
+            <User size={14} />
+            <span className="hidden sm:inline">{isAuthenticated && user ? user.name : 'Sign In / Register'}</span>
+          </button>
 
           {/* AI Copilot Trigger */}
           <button

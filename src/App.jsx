@@ -15,6 +15,7 @@ import SplitScreenLogView from './components/SplitScreenLogView';
 import RouteMap from './components/RouteMap';
 import LogHistory from './components/LogHistory';
 import AICopilotModal from './components/AICopilotModal';
+import AuthModal from './components/auth/AuthModal';
 import RecapScreen from './components/hos/RecapScreen';
 import DVIRForm from './components/reports/DVIRForm';
 import EditHistoryPanel from './components/timeline/EditHistoryPanel';
@@ -34,8 +35,9 @@ import { useTripStore } from './stores/useTripStore';
 import { useUiStore } from './stores/useUiStore';
 
 function App() {
-  const { activeRole, setActiveRole, activeCompany, setActiveCompany, companies } = useAuthStore();
+  const { activeRole, setActiveRole, activeCompany, setActiveCompany, companies, user } = useAuthStore();
   const { activeTab, setActiveTab, isAiCopilotOpen, setIsAiCopilotOpen } = useUiStore();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const {
     blocks: timelineBlocks,
@@ -72,7 +74,7 @@ function App() {
   const activeBlock = timelineBlocks.find(b => b.startMin <= activeMin && b.endMin > activeMin) || timelineBlocks[timelineBlocks.length - 1];
   const currentDutyStatus = activeBlock?.dutyStatus || 'off_duty';
 
-  // 1. Playback Timer Loop (Synchronized trip replay)
+  // Playback Timer Loop (Synchronized trip replay)
   useEffect(() => {
     if (!isPlaying) return;
     const interval = setInterval(() => {
@@ -82,7 +84,7 @@ function App() {
     return () => clearInterval(interval);
   }, [isPlaying, playbackSpeed, activeMin, setActiveMin, setIsPlaying]);
 
-  // 2. Speed simulation & Automatic driving detection loop
+  // Speed simulation & Automatic driving detection loop
   useEffect(() => {
     if (simulatedSpeed > 5 && currentDutyStatus !== 'driving') {
       const nowMin = activeMin > 0 ? activeMin : 480;
@@ -142,11 +144,12 @@ function App() {
         onCompanyChange={setActiveCompany}
         companies={companies}
         onOpenAiCopilot={() => setIsAiCopilotOpen(true)}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
       />
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-8">
-        {/* Desktop Navigation Tabs — Clean Stripe/Linear Aesthetic */}
+        {/* Desktop Navigation Tabs */}
         {activeRole === 'driver' && (
           <div className="hidden md:flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-1.5 shadow-xs">
             <div className="flex items-center gap-1 flex-wrap">
@@ -180,9 +183,9 @@ function App() {
             </div>
 
             <div className="flex items-center gap-2 pr-3 text-xs">
-              <span className="text-slate-400 font-medium">Engine:</span>
-              <span className="bg-slate-100 border border-slate-200 text-slate-700 font-semibold text-[11px] px-2.5 py-0.5 rounded-md font-mono">
-                Zustand Shared HOS
+              <span className="text-slate-400 font-medium">Logged Driver:</span>
+              <span className="bg-slate-100 border border-slate-200 text-slate-800 font-bold text-[11px] px-2.5 py-0.5 rounded-md font-mono">
+                {user ? user.name : 'John Smith'}
               </span>
             </div>
           </div>
@@ -231,9 +234,16 @@ function App() {
             eventLog={eventLog}
             auditTrail={auditTrail}
             updateDutyStatus={updateDutyStatus}
+            driverUser={user}
           />
         )}
       </main>
+
+      {/* Account Auth Modal (Sign In / Register Driver / Fleet Admin) */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
 
       {/* AI Copilot Chatbot Modal */}
       <AICopilotModal
@@ -250,7 +260,6 @@ function App() {
   );
 }
 
-// Internal wrapper linking live HOS clocks to active Tab View
 function DriverViewWithHOS({
   activeTab,
   setActiveTab,
@@ -274,6 +283,7 @@ function DriverViewWithHOS({
   eventLog,
   auditTrail,
   updateDutyStatus,
+  driverUser,
 }) {
   const hos = useHosClock({
     segments: timelineBlocks,
@@ -286,10 +296,8 @@ function DriverViewWithHOS({
 
   return (
     <div className="space-y-6">
-      {/* Device Permissions Diagnostic Bar */}
       <DevicePermissionsBar />
 
-      {/* Auto-Driving Idle Status Transition Dialog */}
       {showAutoDrivePrompt && (
         <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 shadow-sm flex flex-wrap items-center justify-between gap-4 animate-in fade-in duration-200">
           <div className="flex items-center gap-3">
@@ -325,14 +333,14 @@ function DriverViewWithHOS({
         </div>
       )}
 
-      {/* Active View Render */}
       {activeTab === 'dashboard' && (
         <DriverDashboard
+          driverName={driverUser ? driverUser.name : 'John Smith'}
           currentStatus={currentDutyStatus}
           onStatusChange={(st) => updateDutyStatus(st)}
           activeTrip={tripState.activeTrip}
           onNavigateTab={setActiveTab}
-          onExportPdf={() => exportLogToPdf(timelineBlocks, { driver: 'John Smith', carrier: 'ABC Logistics LLC' })}
+          onExportPdf={() => exportLogToPdf(timelineBlocks, { driver: driverUser?.name || 'John Smith', carrier: activeCompany.name || 'ABC Logistics LLC' })}
           onAcceptAiBreak={handleAcceptAiBreak}
           clocks={hos.clocks}
           violations={hos.violations}
@@ -351,7 +359,7 @@ function DriverViewWithHOS({
           blocks={timelineBlocks}
           onChangeBlocks={setTimelineBlocks}
           metadata={{
-            driver: 'John Smith',
+            driver: driverUser ? driverUser.name : 'John Smith',
             carrier: activeCompany.name || 'ABC Logistics LLC',
             vehicle: 'Tractor #T-108 / Trailer #TR-402',
             totalMiles: tripState.summary?.distanceMiles || 842,
@@ -368,10 +376,9 @@ function DriverViewWithHOS({
 
       {activeTab === 'recap' && (
         <RecapScreen
-          timelineBlocks={timelineBlocks}
-          cycleUsed={hos.clocks.cycleUsed}
-          cycleRemaining={hos.clocks.cycleRemaining}
-          recapData={hos.recap7Day}
+          clocks={hos.clocks}
+          violations={hos.violations}
+          warnings={hos.warnings}
         />
       )}
 
@@ -386,7 +393,7 @@ function DriverViewWithHOS({
 
       {activeTab === 'inspection' && (
         <RoadsideInspectionMode
-          driverName="John Smith"
+          driverName={driverUser ? driverUser.name : 'John Smith'}
           carrierName={activeCompany.name || "ABC Logistics LLC"}
           timelineBlocks={timelineBlocks}
           violations={hos.violations}
@@ -418,7 +425,6 @@ function DriverViewWithHOS({
         </div>
       )}
 
-      {/* Driver Certification Modal */}
       <DriverCertification
         isOpen={isCertModalOpen}
         onClose={() => setIsCertModalOpen(false)}
