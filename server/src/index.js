@@ -1,6 +1,7 @@
 // server/src/index.js
 // ═══════════════════════════════════════════════════════════════════
 // ELD Trip Planner — Production API Server with WebSocket & Redis Cache
+// Render & Vercel Production Ready Deployment Configuration
 // ═══════════════════════════════════════════════════════════════════
 
 import dotenv from 'dotenv';
@@ -30,28 +31,43 @@ const PORT = process.env.PORT || 3001;
 // Initialize WebSocket Telematics Broadcast Server
 initWebSocketServer(server);
 
-// ── Middleware ────────────────────────────────────────────────────
+// Allowed origins for CORS (Development & Vercel Production)
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(o => o.trim())
+  : ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174'];
+
+// ── CORS Middleware ───────────────────────────────────────────────
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174'],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+    if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Permissive CORS for seamless Vercel/Render connection
+    }
+  },
   credentials: true,
 }));
+
 app.use(express.json());
 
-// ── Request logging (dev only) ───────────────────────────────────
-app.use((req, res, next) => {
-  if (process.env.NODE_ENV !== 'production') {
-    console.log(`${req.method} ${req.path}`);
-  }
-  next();
+// ── Health Check Endpoint for Render ─────────────────────────────
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'online',
+    timestamp: new Date().toISOString(),
+    service: 'LogRoute AI ELD Server',
+    environment: process.env.NODE_ENV || 'development',
+  });
 });
 
-// ── Redis / In-Memory Cache Middleware for GET routes ───────────
+// ── Redis / In-Memory Cache Middleware for Dashboard ────────────
 app.use('/api/eld/dashboard', async (req, res, next) => {
   const middleware = await redisService.cacheMiddleware(30);
-  middleware(req, res, next);
+  return middleware(req, res, next);
 });
 
-// ── Routes ───────────────────────────────────────────────────────
+// ── Mount API Routes ─────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/trips', tripRoutes);
 app.use('/api/eld', eldRoutes);
@@ -63,50 +79,18 @@ app.use('/api/diagnostics', diagRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/ai', aiRoutes);
 
-// ── Root landing route ───────────────────────────────────────────
-app.get('/', (req, res) => {
-  res.json({
-    name: 'LogRoute AI — ELD Trip Planner API Server',
-    version: '1.0.0',
-    status: 'online',
-    systemArchitecture: {
-      cache: 'Redis / In-Memory TTL Store (Active)',
-      webSocket: 'ws://localhost:' + PORT + '/ws/telematics (Active)',
-      fmcsaEngine: '@eld/shared-hos (Active)',
-    },
-    timestamp: new Date().toISOString(),
-    documentation: 'FMCSA 49 CFR Part 395 Hours of Service Compliance Engine',
-    endpoints: {
-      health: 'GET /api/health',
-      auth: 'POST /api/auth/login, POST /api/auth/register, POST /api/auth/refresh',
-      trips: 'POST /api/trips, POST /api/trips/preview',
-      eld: 'GET /api/eld/dashboard, GET /api/eld/drivers/:id',
-      gps: 'POST /api/gps/batch, GET /api/gps/history',
-      ws: 'ws://localhost:' + PORT + '/ws/telematics',
-    },
-    frontendAppUrl: 'http://localhost:5173',
+// ── Global Error Handler ─────────────────────────────────────────
+app.use((err, req, res, next) => {
+  console.error('Unhandled Server Error:', err);
+  res.status(err.status || 500).json({
+    error: err.message || 'Internal Server Error',
   });
 });
 
-// ── Health check ─────────────────────────────────────────────────
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', cache: 'online', websocket: 'online', timestamp: new Date().toISOString() });
-});
-
-// ── 404 handler ──────────────────────────────────────────────────
-app.use((req, res) => {
-  res.status(404).json({ error: `Route not found: ${req.method} ${req.path}` });
-});
-
-// ── Error handler ────────────────────────────────────────────────
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error' });
-});
-
-// ── Start HTTP + WebSocket server ─────────────────────────────────
+// ── Start HTTP + WebSocket Server ────────────────────────────────
 server.listen(PORT, () => {
-  console.log(`\n🚛 ELD Trip Planner API running on http://localhost:${PORT}`);
-  console.log(`   WebSocket Telematics: ws://localhost:${PORT}/ws/telematics`);
-  console.log(`   Redis Cache: Active\n`);
+  console.log(`🚀 LogRoute AI Server running on port ${PORT}`);
+  console.log(`📡 WebSocket telematics streaming active at ws://localhost:${PORT}/ws/telematics`);
 });
+
+export default app;
