@@ -95,7 +95,7 @@ export default function Navbar({
           </span>
         </div>
 
-        {/* Center: Multi-Company Switcher (Visible to Admins / Dispatchers) */}
+        {/* Center: Multi-Company Switcher */}
         {isAdminUser && (
           <div className="hidden lg:flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1">
             <Building2 size={15} className="text-slate-500 ml-2" />
@@ -116,7 +116,7 @@ export default function Navbar({
           </div>
         )}
 
-        {/* Right Actions: Role Access Badge, Account Menu, AI Copilot, Notifications */}
+        {/* Right Actions: Role Access Badge, Account Menu, Log Out, AI Copilot, Notifications */}
         <div className="flex items-center gap-3">
           
           {/* Admin vs Driver Access Mode Pills */}
@@ -153,60 +153,26 @@ export default function Navbar({
             </div>
           )}
 
-          {/* User Account & Role Identity Dropdown */}
-          <div ref={userMenuRef} className="relative">
-            <button
-              onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-2 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
-            >
-              <User size={14} />
-              <span className="hidden sm:inline">
-                {isAuthenticated && user ? user.name : 'Sign In / Register'}
-              </span>
-            </button>
+          {/* User Account Button */}
+          <button
+            onClick={onOpenAuthModal}
+            className="flex items-center gap-2 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+          >
+            <User size={14} />
+            <span className="hidden sm:inline">
+              {isAuthenticated && user ? user.name : 'Sign In / Register'}
+            </span>
+          </button>
 
-            {/* Dropdown Menu */}
-            {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 animate-in fade-in duration-150 text-xs">
-                <div className="p-3 bg-slate-50">
-                  <p className="font-extrabold text-slate-900">{user?.name || 'Logged User'}</p>
-                  <p className="text-[11px] text-slate-500 font-mono">{user?.email || 'driver@abclogistics.com'}</p>
-                  <div className="mt-2 flex items-center justify-between pt-1">
-                    <span className="text-[10px] uppercase font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">
-                      Role: {user?.role || activeRole}
-                    </span>
-                    <span className="text-[10px] font-mono text-slate-400">ID: {user?.truckerId || 'TRK-1001'}</span>
-                  </div>
-                </div>
-
-                <div className="p-2 space-y-1">
-                  <button
-                    onClick={() => {
-                      setShowUserMenu(false);
-                      onOpenAuthModal();
-                    }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-50 font-bold text-slate-700 rounded-lg flex items-center gap-2"
-                  >
-                    <LogIn size={14} className="text-blue-600" />
-                    <span>Switch Role / Sign In</span>
-                  </button>
-                  {isAuthenticated && (
-                    <button
-                      onClick={() => {
-                        logout();
-                        setShowUserMenu(false);
-                        onOpenAuthModal();
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-red-50 font-bold text-red-600 rounded-lg flex items-center gap-2"
-                    >
-                      <LogOut size={14} />
-                      <span>Log Out</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          {/* Prominent Red Log Out Button */}
+          <button
+            onClick={logout}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-95 cursor-pointer"
+            title="Log Out & Return to Login Screen"
+          >
+            <LogOut size={14} className="text-rose-600" />
+            <span className="hidden sm:inline">Log Out</span>
+          </button>
 
           {/* AI Copilot Trigger */}
           <button
