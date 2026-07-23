@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Truck, Shield, Building2, UserCheck, Bot, Bell, Clock, Radio, AlertTriangle, ShieldAlert, CheckCircle2, FileCheck, X, LogIn, User } from 'lucide-react';
+import { Truck, Shield, Building2, UserCheck, Bot, Bell, Clock, Radio, AlertTriangle, ShieldAlert, CheckCircle2, FileCheck, X, LogIn, User, LogOut, Lock } from 'lucide-react';
 import useRealTime from '../hooks/useRealTime';
 import { useAuthStore } from '../stores/useAuthStore';
 
@@ -15,7 +15,9 @@ export default function Navbar({
   const timeInfo = useRealTime();
   const { user, isAuthenticated, logout } = useAuthStore();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const dropdownRef = useRef(null);
+  const userMenuRef = useRef(null);
 
   const [notifications, setNotifications] = useState([
     {
@@ -43,6 +45,9 @@ export default function Navbar({
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setShowNotifications(false);
       }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setShowUserMenu(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -56,8 +61,11 @@ export default function Navbar({
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
+  const isDriverUser = user?.role === 'driver' || activeRole === 'driver';
+  const isAdminUser = user?.role === 'admin' || user?.role === 'manager' || activeRole === 'admin' || activeRole === 'manager';
+
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 md:px-8 py-3 shadow-xs">
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 md:px-8 py-3 shadow-xs font-sans">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         {/* Brand & Logo */}
         <div className="flex items-center gap-3">
@@ -87,62 +95,118 @@ export default function Navbar({
           </span>
         </div>
 
-        {/* Center: Multi-Company Switcher */}
-        <div className="hidden lg:flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1">
-          <Building2 size={15} className="text-slate-500 ml-2" />
-          <select
-            value={activeCompany.id}
-            onChange={(e) => {
-              const comp = companies.find((c) => c.id === e.target.value);
-              if (comp) onCompanyChange(comp);
-            }}
-            className="bg-transparent text-xs font-semibold text-slate-800 outline-none pr-3 cursor-pointer py-1"
-          >
-            {companies.map((c) => (
-              <option key={c.id} value={c.id} className="bg-white text-slate-900">
-                {c.name} ({c.driversCount} Drivers)
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Right Actions: Role Selector, Account Login/Sign Up, AI Copilot, Notifications */}
-        <div className="flex items-center gap-3">
-          {/* Role Switcher Pills */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80">
-            {[
-              { id: 'driver', label: 'Driver', icon: Truck },
-              { id: 'manager', label: 'Dispatcher', icon: UserCheck },
-              { id: 'admin', label: 'Admin', icon: Shield },
-            ].map((role) => {
-              const Icon = role.icon;
-              const isActive = activeRole === role.id;
-              return (
-                <button
-                  key={role.id}
-                  onClick={() => onRoleChange(role.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                    isActive
-                      ? 'bg-blue-600 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Icon size={14} />
-                  <span className="hidden sm:inline">{role.label}</span>
-                </button>
-              );
-            })}
+        {/* Center: Multi-Company Switcher (Visible to Admins / Dispatchers) */}
+        {isAdminUser && (
+          <div className="hidden lg:flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1">
+            <Building2 size={15} className="text-slate-500 ml-2" />
+            <select
+              value={activeCompany.id}
+              onChange={(e) => {
+                const comp = companies.find((c) => c.id === e.target.value);
+                if (comp) onCompanyChange(comp);
+              }}
+              className="bg-transparent text-xs font-semibold text-slate-800 outline-none pr-3 cursor-pointer py-1"
+            >
+              {companies.map((c) => (
+                <option key={c.id} value={c.id} className="bg-white text-slate-900">
+                  {c.name} ({c.driversCount} Drivers)
+                </option>
+              ))}
+            </select>
           </div>
+        )}
 
-          {/* Account Login / Sign Up Trigger Button */}
-          <button
-            onClick={onOpenAuthModal}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
-            title="Sign In / Register Driver Account"
-          >
-            <User size={14} />
-            <span className="hidden sm:inline">{isAuthenticated && user ? user.name : 'Sign In / Register'}</span>
-          </button>
+        {/* Right Actions: Role Access Badge, Account Menu, AI Copilot, Notifications */}
+        <div className="flex items-center gap-3">
+          
+          {/* Admin vs Driver Access Mode Pills */}
+          {isAdminUser ? (
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80">
+              <button
+                onClick={() => onRoleChange('manager')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activeRole === 'manager' || activeRole === 'admin'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <UserCheck size={14} />
+                <span>Dispatcher / Admin</span>
+              </button>
+              <button
+                onClick={() => onRoleChange('driver')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activeRole === 'driver'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Truck size={14} />
+                <span>Driver View</span>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs">
+              <Truck size={14} className="text-emerald-600" />
+              <span>Driver Portal</span>
+              <Lock size={10} className="text-emerald-700 ml-1" />
+            </div>
+          )}
+
+          {/* User Account & Role Identity Dropdown */}
+          <div ref={userMenuRef} className="relative">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="flex items-center gap-2 px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs"
+            >
+              <User size={14} />
+              <span className="hidden sm:inline">
+                {isAuthenticated && user ? user.name : 'Sign In / Register'}
+              </span>
+            </button>
+
+            {/* Dropdown Menu */}
+            {showUserMenu && (
+              <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 animate-in fade-in duration-150 text-xs">
+                <div className="p-3 bg-slate-50">
+                  <p className="font-extrabold text-slate-900">{user?.name || 'Logged User'}</p>
+                  <p className="text-[11px] text-slate-500 font-mono">{user?.email || 'driver@abclogistics.com'}</p>
+                  <div className="mt-2 flex items-center justify-between pt-1">
+                    <span className="text-[10px] uppercase font-bold bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">
+                      Role: {user?.role || activeRole}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">ID: {user?.truckerId || 'TRK-1001'}</span>
+                  </div>
+                </div>
+
+                <div className="p-2 space-y-1">
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      onOpenAuthModal();
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-slate-50 font-bold text-slate-700 rounded-lg flex items-center gap-2"
+                  >
+                    <LogIn size={14} className="text-blue-600" />
+                    <span>Switch Role / Sign In</span>
+                  </button>
+                  {isAuthenticated && (
+                    <button
+                      onClick={() => {
+                        logout();
+                        setShowUserMenu(false);
+                        onOpenAuthModal();
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-red-50 font-bold text-red-600 rounded-lg flex items-center gap-2"
+                    >
+                      <LogOut size={14} />
+                      <span>Log Out</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* AI Copilot Trigger */}
           <button
@@ -153,12 +217,12 @@ export default function Navbar({
             <span className="hidden md:inline">LogRoute Copilot</span>
           </button>
 
-          {/* Notifications Dropdown Container */}
+          {/* Notifications Dropdown */}
           <div ref={dropdownRef} className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
               className="p-2 bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl transition-colors relative shadow-xs"
-              title="FMCSA HOS & System Notifications"
+              title="FMCSA HOS Notifications"
             >
               <Bell size={18} />
               {unreadCount > 0 && (
@@ -168,7 +232,6 @@ export default function Navbar({
               )}
             </button>
 
-            {/* Notification Popover Panel */}
             {showNotifications && (
               <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden divide-y divide-slate-100 animate-in fade-in duration-150">
                 <div className="p-3 bg-slate-50 flex items-center justify-between border-b border-slate-100">
@@ -177,10 +240,7 @@ export default function Navbar({
                     <span className="font-extrabold text-sm text-slate-900">HOS Alerts & Notifications</span>
                   </div>
                   {unreadCount > 0 && (
-                    <button
-                      onClick={markAllRead}
-                      className="text-[11px] font-bold text-blue-600 hover:underline"
-                    >
+                    <button onClick={markAllRead} className="text-[11px] font-bold text-blue-600 hover:underline">
                       Mark all read
                     </button>
                   )}
@@ -188,27 +248,13 @@ export default function Navbar({
 
                 <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
                   {notifications.length === 0 ? (
-                    <div className="p-6 text-center text-xs text-slate-500">
-                      No new notifications. All clear!
-                    </div>
+                    <div className="p-6 text-center text-xs text-slate-500">No new notifications.</div>
                   ) : (
                     notifications.map((n) => (
-                      <div
-                        key={n.id}
-                        className={`p-3.5 flex items-start gap-3 transition-colors ${
-                          n.read ? 'bg-slate-50/50 text-slate-500' : 'bg-white text-slate-900'
-                        }`}
-                      >
+                      <div key={n.id} className="p-3.5 flex items-start gap-3 bg-white text-slate-900">
                         <div className="mt-0.5 shrink-0">
-                          {n.type === 'warning' ? (
-                            <AlertTriangle size={18} className="text-amber-500" />
-                          ) : n.type === 'violation' ? (
-                            <ShieldAlert size={18} className="text-rose-500" />
-                          ) : (
-                            <FileCheck size={18} className="text-blue-600" />
-                          )}
+                          {n.type === 'warning' ? <AlertTriangle size={18} className="text-amber-500" /> : <FileCheck size={18} className="text-blue-600" />}
                         </div>
-
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
                             <h4 className="text-xs font-bold text-slate-900 truncate">{n.title}</h4>
@@ -216,20 +262,12 @@ export default function Navbar({
                           </div>
                           <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">{n.message}</p>
                         </div>
-
-                        <button
-                          onClick={() => removeNotification(n.id)}
-                          className="text-slate-400 hover:text-slate-600 p-0.5 rounded"
-                        >
+                        <button onClick={() => removeNotification(n.id)} className="text-slate-400 hover:text-slate-600 p-0.5 rounded">
                           <X size={12} />
                         </button>
                       </div>
                     ))
                   )}
-                </div>
-
-                <div className="p-2.5 bg-slate-50 text-center border-t border-slate-100">
-                  <span className="text-[10px] text-slate-500 font-mono">Real-Time FMCSA Alert Monitoring</span>
                 </div>
               </div>
             )}

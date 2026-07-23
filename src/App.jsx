@@ -1,7 +1,7 @@
 // src/App.jsx
 // ═══════════════════════════════════════════════════════════════════
 // ELD Trip Planner — Master App Container & State Orchestrator
-// American SaaS Enterprise UI (Stripe / Linear / Vercel Aesthetic)
+// Strict Role-Based Access Control (RBAC) View Isolation
 // ═══════════════════════════════════════════════════════════════════
 
 import React, { useEffect, useState } from 'react';
@@ -74,7 +74,7 @@ function App() {
   const activeBlock = timelineBlocks.find(b => b.startMin <= activeMin && b.endMin > activeMin) || timelineBlocks[timelineBlocks.length - 1];
   const currentDutyStatus = activeBlock?.dutyStatus || 'off_duty';
 
-  // Playback Timer Loop (Synchronized trip replay)
+  // Playback Timer Loop
   useEffect(() => {
     if (!isPlaying) return;
     const interval = setInterval(() => {
@@ -134,6 +134,11 @@ function App() {
     setActiveTab('daily_log');
   };
 
+  // Determine current active view based on user role
+  const isDriverAccess = user?.role === 'driver' || activeRole === 'driver';
+  const isManagerAccess = activeRole === 'manager' || (user?.role === 'manager' && activeRole !== 'driver');
+  const isAdminAccess = activeRole === 'admin' || (user?.role === 'admin' && activeRole !== 'driver');
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-20 md:pb-12 selection:bg-blue-500 selection:text-white">
       {/* Top Navigation Bar */}
@@ -149,8 +154,9 @@ function App() {
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-8">
-        {/* Desktop Navigation Tabs */}
-        {activeRole === 'driver' && (
+        
+        {/* Driver Interface Navigation Tabs (Visible strictly in Driver Portal) */}
+        {isDriverAccess && (
           <div className="hidden md:flex items-center justify-between bg-white border border-slate-200 rounded-2xl p-1.5 shadow-xs">
             <div className="flex items-center gap-1 flex-wrap">
               {[
@@ -184,15 +190,15 @@ function App() {
 
             <div className="flex items-center gap-2 pr-3 text-xs">
               <span className="text-slate-400 font-medium">Logged Driver:</span>
-              <span className="bg-slate-100 border border-slate-200 text-slate-800 font-bold text-[11px] px-2.5 py-0.5 rounded-md font-mono">
-                {user ? user.name : 'John Smith'}
+              <span className="bg-blue-50 text-blue-800 border border-blue-200 font-bold text-[11px] px-2.5 py-0.5 rounded-md font-mono">
+                {user ? user.name : 'John Smith'} ({user?.truckerId || 'TRK-1001'})
               </span>
             </div>
           </div>
         )}
 
-        {/* Manager & Admin Views */}
-        {activeRole === 'manager' && (
+        {/* Dispatcher Fleet Portal View */}
+        {isManagerAccess && (
           <FleetManagerDashboard
             activeCompany={activeCompany}
             onSelectDriverLog={() => {
@@ -202,15 +208,16 @@ function App() {
           />
         )}
 
-        {activeRole === 'admin' && (
+        {/* Carrier Admin Management View */}
+        {isAdminAccess && (
           <AdminDashboard
             companies={companies}
             onAddCompany={() => {}}
           />
         )}
 
-        {/* Driver Views */}
-        {activeRole === 'driver' && (
+        {/* Driver Portal View */}
+        {isDriverAccess && (
           <DriverViewWithHOS
             activeTab={activeTab}
             setActiveTab={setActiveTab}
@@ -239,7 +246,7 @@ function App() {
         )}
       </main>
 
-      {/* Account Auth Modal (Sign In / Register Driver / Fleet Admin) */}
+      {/* Account Auth Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
@@ -254,8 +261,10 @@ function App() {
         timelineBlocks={timelineBlocks}
       />
 
-      {/* Mobile Bottom Navigation */}
-      <MobileBottomNav activeTab={activeTab} onSelectTab={setActiveTab} />
+      {/* Mobile Bottom Navigation (Driver Mode Only) */}
+      {isDriverAccess && (
+        <MobileBottomNav activeTab={activeTab} onSelectTab={setActiveTab} />
+      )}
     </div>
   );
 }
