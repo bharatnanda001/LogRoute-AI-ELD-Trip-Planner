@@ -394,6 +394,7 @@ function DriverViewWithHOS({
           clocks={hos.clocks}
           violations={hos.violations}
           warnings={hos.warnings}
+          cycleData={hos.recap7Day}
         />
       )}
 
