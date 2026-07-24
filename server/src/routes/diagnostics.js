@@ -7,6 +7,7 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { enforceTenantScope } from '../middleware/tenantScope.js';
 import { query } from '../config/db.js';
+import { syncLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
 
@@ -14,7 +15,7 @@ const router = Router();
  * POST /api/diagnostics
  * Log diagnostic event (e.g. gps_lost, power_interrupt, engine_sync_lost)
  */
-router.post('/', authenticate, enforceTenantScope, async (req, res) => {
+router.post('/', authenticate, enforceTenantScope, syncLimiter, async (req, res) => {
   try {
     const { diagnosticCode, severity = 'warning', description, latitude, longitude, vehicleId } = req.body;
 
@@ -71,7 +72,7 @@ router.patch('/:id/resolve', authenticate, enforceTenantScope, async (req, res) 
  * GET /api/diagnostics
  * List diagnostic events
  */
-router.get('/', authenticate, enforceTenantScope, async (req, res) => {
+router.get('/', authenticate, enforceTenantScope, syncLimiter, async (req, res) => {
   try {
     const { activeOnly } = req.query;
 

@@ -7,6 +7,7 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { enforceTenantScope } from '../middleware/tenantScope.js';
 import { query } from '../config/db.js';
+import { syncLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
 
@@ -14,7 +15,7 @@ const router = Router();
  * POST /api/events
  * Record an immutable ELD event (status_change, login, logout, edit, etc.)
  */
-router.post('/', authenticate, enforceTenantScope, async (req, res) => {
+router.post('/', authenticate, enforceTenantScope, syncLimiter, async (req, res) => {
   try {
     const {
       eventType,
@@ -69,7 +70,7 @@ router.post('/', authenticate, enforceTenantScope, async (req, res) => {
  * GET /api/events
  * Fetch immutable event audit trail
  */
-router.get('/', authenticate, enforceTenantScope, async (req, res) => {
+router.get('/', authenticate, enforceTenantScope, syncLimiter, async (req, res) => {
   try {
     const { driverId, eventType, from, to, limit = 500 } = req.query;
     const targetDriver = driverId || req.user.driverId;

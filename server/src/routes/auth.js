@@ -7,7 +7,8 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { query } from '../config/db.js';
 import { generateToken } from '../middleware/auth.js';
-
+import { loginLimiter } from '../middleware/rateLimiter.js';
+import { validate, registerSchema, loginSchema } from '../middleware/validation.js';
 const router = Router();
 
 /**
@@ -17,7 +18,7 @@ const router = Router();
  * Creates a user + driver profile (if role=driver).
  * Returns a JWT.
  */
-router.post('/register', async (req, res) => {
+router.post('/register', validate(registerSchema), async (req, res) => {
   try {
     const { email, password, firstName, lastName, role = 'driver' } = req.body;
 
@@ -73,7 +74,7 @@ router.post('/register', async (req, res) => {
  * Body: { email, password }
  * Returns a JWT.
  */
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, validate(loginSchema), async (req, res) => {
   try {
     const { email, password } = req.body;
 

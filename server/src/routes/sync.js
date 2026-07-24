@@ -4,7 +4,9 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { Router } from 'express';
+import { syncLimiter } from '../middleware/rateLimiter.js';
 import { authenticate } from '../middleware/auth.js';
+// duplicate import removed
 import { enforceTenantScope } from '../middleware/tenantScope.js';
 import { query } from '../config/db.js';
 
@@ -15,7 +17,7 @@ const router = Router();
  * Compare client state version vs server version.
  * Detect conflicts or merge changes safely without "Last Write Wins".
  */
-router.post('/', authenticate, enforceTenantScope, async (req, res) => {
+router.post('/', authenticate, enforceTenantScope, syncLimiter, async (req, res) => {
   try {
     const { entityType, entityId, clientVersion, clientData, resolutionStrategy } = req.body;
 
@@ -24,14 +26,25 @@ router.post('/', authenticate, enforceTenantScope, async (req, res) => {
     }
 
     // Example table lookup depending on entityType
-    let table = '';
-    if (entityType === 'daily_log_sheet') table = 'daily_log_sheets';
-    else if (entityType === 'duty_status_segment') table = 'duty_status_segments';
-    else if (entityType === 'trip') table = 'trips';
-    else return res.status(400).json({ error: 'Invalid entityType' });
+    // Determine table based on entityType using whitelist (safe against injection)
+    let table;
+    switch (entityType) {
+      case 'daily_log_sheet':
+        table = 'daily_log_sheets';
+        break;
+      case 'duty_status_segment':
+        table = 'duty_status_segments';
+        break;
+      case 'trip':
+        table = 'trips';
+        break;
+      default:
+        return res.status(400).json({ error: 'Invalid entityType' });
+    }
 
     // Fetch server version
     const serverResult = await query(
+      // Use whitelist-validated table name safely in query string
       `SELECT id, updated_at FROM ${table} WHERE id = $1`,
       [entityId]
     );

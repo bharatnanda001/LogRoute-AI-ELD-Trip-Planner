@@ -8,6 +8,7 @@ import { authenticate } from '../middleware/auth.js';
 import { enforceTenantScope } from '../middleware/tenantScope.js';
 import { requireRole } from '../middleware/rbac.js';
 import { query } from '../config/db.js';
+import { syncLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
 
@@ -15,7 +16,7 @@ const router = Router();
  * POST /api/dvir
  * Create a pre-trip or post-trip DVIR
  */
-router.post('/', authenticate, enforceTenantScope, async (req, res) => {
+router.post('/', authenticate, enforceTenantScope, syncLimiter, async (req, res) => {
   try {
     const {
       vehicleId,

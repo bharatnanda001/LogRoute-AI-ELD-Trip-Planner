@@ -14,7 +14,11 @@
   "license": "ISC",
   "dependencies": {
     "canvas-confetti": "^1.9.4",
+    "cookie-parser": "^1.4.7",
+    "csurf": "^1.11.0",
+    "express-rate-limit": "^8.6.0",
     "framer-motion": "^12.42.2",
+    "helmet": "^8.3.0",
     "jspdf": "^4.2.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.25.0",
@@ -22,6 +26,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-leaflet": "^5.0.0",
+    "zod": "^4.4.3",
     "zustand": "^5.0.3"
   },
   "devDependencies": {

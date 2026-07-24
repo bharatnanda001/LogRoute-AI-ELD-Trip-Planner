@@ -7,6 +7,7 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { enforceTenantScope } from '../middleware/tenantScope.js';
 import { query } from '../config/db.js';
+import { syncLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
 
@@ -14,7 +15,7 @@ const router = Router();
  * POST /api/certifications
  * Submit end-of-day driver signature to lock daily log sheet
  */
-router.post('/', authenticate, enforceTenantScope, async (req, res) => {
+router.post('/', authenticate, enforceTenantScope, syncLimiter, async (req, res) => {
   try {
     const { dailyLogSheetId, signatureData, certificationText } = req.body;
 

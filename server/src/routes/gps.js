@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════════════════════════════
 
 import { Router } from 'express';
+import { syncLimiter } from '../middleware/rateLimiter.js';
 import { authenticate } from '../middleware/auth.js';
 import { enforceTenantScope } from '../middleware/tenantScope.js';
 import { query } from '../config/db.js';
@@ -14,7 +15,7 @@ const router = Router();
  * POST /api/gps/batch
  * Batch insert GPS positions recorded offline or live
  */
-router.post('/batch', authenticate, enforceTenantScope, async (req, res) => {
+router.post('/batch', authenticate, enforceTenantScope, syncLimiter, async (req, res) => {
   try {
     const { positions } = req.body;
     if (!Array.isArray(positions) || positions.length === 0) {
@@ -60,7 +61,7 @@ router.post('/batch', authenticate, enforceTenantScope, async (req, res) => {
  * GET /api/gps/history
  * Fetch GPS breadcrumb history for playback/audit
  */
-router.get('/history', authenticate, enforceTenantScope, async (req, res) => {
+router.get('/history', authenticate, enforceTenantScope, syncLimiter, async (req, res) => {
   try {
     const { driverId, startTime, endTime, limit = 1000 } = req.query;
     const targetDriver = driverId || req.user.driverId;

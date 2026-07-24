@@ -10,6 +10,10 @@ dotenv.config();
 import express from 'express';
 import http from 'http';
 import cors from 'cors';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
+import csurf from 'csurf';
+import rateLimit from 'express-rate-limit';
 import { redisService } from './config/redisService.js';
 import { initWebSocketServer } from './services/websocketService.js';
 
@@ -50,10 +54,20 @@ app.use(cors({
 }));
 
 app.use(express.json());
+app.use(cookieParser());
+app.use(helmet());
+app.use(csurf({ cookie: true }));
+
+// Rate limiting (global defaults, can be overridden per route)
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 1000, // generous default for non‑critical routes
+  message: { error: 'Too many requests, please try again later.' },
+});
+app.use('/api/', apiLimiter);
 
 // ── Health Check Endpoint for Render ─────────────────────────────
 app.get('/api/health', (req, res) => {
-  res.json({
     status: 'online',
     timestamp: new Date().toISOString(),
     service: 'LogRoute AI ELD Server',
