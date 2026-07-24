@@ -13,7 +13,7 @@ const initialBlocks = [
   { id: 'b4', dutyStatus: 'off_duty', startMin: 690, endMin: 720, annotation: '30-min rest break', bracketed: true, specialCategory: 'none' },
   { id: 'b5', dutyStatus: 'driving', startMin: 720, endMin: 1050, annotation: 'Driving Leg 2', specialCategory: 'none' },
   { id: 'b6', dutyStatus: 'on_duty_not_driving', startMin: 1050, endMin: 1110, annotation: 'Drop-off', location: { city: 'Houston', state: 'TX' }, specialCategory: 'yard_move', reason: 'Moving trailer in yard' },
-  { id: 'b7', dutyStatus: 'off_duty', startMin: 1110, endMin: 1440, annotation: '10-hr sleeper reset', specialCategory: 'none' },
+  { id: 'b7', dutyStatus: 'sleeper_berth', startMin: 1110, endMin: 1440, annotation: '10-hr sleeper reset', specialCategory: 'none' },
 ];
 
 export const useTimelineStore = create((set, get) => ({
