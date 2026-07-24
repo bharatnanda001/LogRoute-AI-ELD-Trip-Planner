@@ -90,5 +90,25 @@ export function formatDateLong(d = getSyncedDate()) {
   return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
+/**
+ * Dynamic 7-Day Rolling Calendar Dates for FMCSA 70-Hr Cycle Recap
+ */
+export function getLast7Days(endDate = getSyncedDate()) {
+  const days = [];
+  const hoursMap = [8.5, 9.0, 10.0, 7.5, 8.0, 9.5];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(endDate);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    days.push({
+      day: i === 0 ? 'Today' : `Day ${7 - i}`,
+      date: dateStr,
+      isoDate: formatDateISO(d),
+      defaultHours: i === 0 ? 0 : hoursMap[6 - i] || 8.0,
+    });
+  }
+  return days;
+}
+
 // Initial auto-sync on load
 syncNetworkTime();

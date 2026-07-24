@@ -6,6 +6,7 @@
 
 import { useMemo } from 'react';
 import { HOS_LIMITS, RULE_SETS } from '../engine/hosEngine.js';
+import { getLast7Days } from '../services/timeService.js';
 
 export default function useHosClock(blocksInput = [], optionsInput = {}) {
   const blocks = Array.isArray(blocksInput)
@@ -60,14 +61,12 @@ export default function useHosClock(blocksInput = [], optionsInput = {}) {
       if (b.specialCategory === 'personal_conveyance') {
         pcMins += dur;
         totalOffDutyMins += dur;
-        if (dur >= 30) driveSinceBreak = 0;
         continue;
       }
 
       if (b.specialCategory === 'yard_move') {
         ymMins += dur;
         totalOnDutyMins += dur;
-        if (shiftWindowStart === -1) shiftWindowStart = b.startMin || 0;
         continue;
       }
 
@@ -75,48 +74,52 @@ export default function useHosClock(blocksInput = [], optionsInput = {}) {
         case 'driving':
           totalDrivingMins += dur;
           driveSinceBreak += dur;
-          if (shiftWindowStart === -1) shiftWindowStart = b.startMin || 0;
+          if (shiftWindowStart === -1) shiftWindowStart = b.startMin;
           break;
 
         case 'on_duty_not_driving':
           totalOnDutyMins += dur;
-          if (shiftWindowStart === -1) shiftWindowStart = b.startMin || 0;
+          if (shiftWindowStart === -1) shiftWindowStart = b.startMin;
           break;
 
         case 'sleeper_berth':
           totalSleeperMins += dur;
           if (dur >= 30) driveSinceBreak = 0;
-          if (dur >= 600) shiftWindowStart = -1;
           break;
 
         case 'off_duty':
+        default:
           totalOffDutyMins += dur;
           if (dur >= 30) driveSinceBreak = 0;
-          if (dur >= 600) shiftWindowStart = -1;
           break;
       }
     }
 
-    const lastBlock = sorted[sorted.length - 1];
-    const currentMin = lastBlock ? (lastBlock.endMin || 0) : 0;
-    const shiftElapsed = shiftWindowStart >= 0 ? currentMin - shiftWindowStart : 0;
-
     const driveLimitMins = baseDriveLimitHours * 60;
-    const shiftLimitMins = baseWindowLimitHours * 60;
-    const breakLimitMins = 8 * 60;
-    const cycleLimitMins = (activeRuleConfig.cycleLimit || 70) * 60;
-    const cycleUsedPriorMins = cycleHoursUsedPrior * 60;
+    const windowLimitMins = baseWindowLimitHours * 60;
+    const breakLimitMins = 8 * 60; // 8 continuous hours driving before break
+    const cycleLimitMins = (activeRuleConfig.maxCycleHours || 70) * 60;
 
     const driveRemaining = Math.max(0, driveLimitMins - totalDrivingMins);
-    const shiftRemaining = Math.max(0, shiftLimitMins - shiftElapsed);
-    const breakCountdown = exceptions.shortHaulExemption ? 480 : Math.max(0, breakLimitMins - driveSinceBreak);
-    const cycleRemaining = Math.max(0, cycleLimitMins - (cycleUsedPriorMins + totalDrivingMins + totalOnDutyMins));
+    
+    let shiftElapsed = 0;
+    if (shiftWindowStart !== -1) {
+      const lastBlock = sorted[sorted.length - 1];
+      shiftElapsed = (lastBlock ? lastBlock.endMin : 1440) - shiftWindowStart;
+    }
+    const shiftRemaining = Math.max(0, windowLimitMins - shiftElapsed);
+
+    const breakCountdown = Math.max(0, breakLimitMins - driveSinceBreak);
+
+    const cycleUsedPriorMins = cycleHoursUsedPrior * 60;
+    const totalCycleDutyMins = cycleUsedPriorMins + totalDrivingMins + totalOnDutyMins;
+    const cycleRemaining = Math.max(0, cycleLimitMins - totalCycleDutyMins);
 
     // Rule 1: Driving Limit
     if (totalDrivingMins > driveLimitMins) {
       violations.push({
         rule: `${baseDriveLimitHours}-Hour Driving Limit`,
-        description: `Exceeded driving limit by ${Math.round((totalDrivingMins - driveLimitMins) / 60)}h ${Math.round((totalDrivingMins - driveLimitMins) % 60)}m.`,
+        description: `Exceeded maximum driving time by ${Math.round((totalDrivingMins - driveLimitMins) / 60)}h ${Math.round((totalDrivingMins - driveLimitMins) % 60)}m.`,
       });
     } else if (driveRemaining <= 60 && driveRemaining > 0) {
       warnings.push({
@@ -126,10 +129,10 @@ export default function useHosClock(blocksInput = [], optionsInput = {}) {
     }
 
     // Rule 2: Duty Window Limit
-    if (shiftElapsed > shiftLimitMins) {
+    if (shiftElapsed > windowLimitMins) {
       violations.push({
         rule: `${baseWindowLimitHours}-Hour Duty Window`,
-        description: `Shift window exceeded by ${Math.round((shiftElapsed - shiftLimitMins) / 60)}h ${Math.round((shiftElapsed - shiftLimitMins) % 60)}m.`,
+        description: `Shift window exceeded by ${Math.round((shiftElapsed - windowLimitMins) / 60)}h ${Math.round((shiftElapsed - windowLimitMins) % 60)}m.`,
       });
     }
 
@@ -149,6 +152,14 @@ export default function useHosClock(blocksInput = [], optionsInput = {}) {
     }
 
     const complianceStatus = violations.length > 0 ? 'violation' : warnings.length > 0 ? 'warning' : 'legal';
+
+    // Calculate dynamic 7-day rolling calendar dates
+    const dynamic7Days = getLast7Days();
+    const recap7Day = dynamic7Days.map((item, idx) => ({
+      day: item.day,
+      date: item.date,
+      hoursOnDuty: idx === 6 ? (totalDrivingMins + totalOnDutyMins) / 60 : item.defaultHours,
+    }));
 
     return {
       clocks: {
@@ -172,15 +183,7 @@ export default function useHosClock(blocksInput = [], optionsInput = {}) {
         pairingType: totalSleeperMins >= 420 ? '7/3 Split' : '8/2 Split',
         qualifyingPeriodMinutes: totalSleeperMins,
       },
-      recap7Day: [
-        { day: 'Day 1', date: 'Jul 17', hoursOnDuty: 8.5 },
-        { day: 'Day 2', date: 'Jul 18', hoursOnDuty: 9.0 },
-        { day: 'Day 3', date: 'Jul 19', hoursOnDuty: 10.0 },
-        { day: 'Day 4', date: 'Jul 20', hoursOnDuty: 7.5 },
-        { day: 'Day 5', date: 'Jul 21', hoursOnDuty: 8.0 },
-        { day: 'Day 6', date: 'Jul 22', hoursOnDuty: 9.5 },
-        { day: 'Today', date: 'Jul 23', hoursOnDuty: (totalDrivingMins + totalOnDutyMins) / 60 },
-      ],
+      recap7Day,
     };
   }, [blocks, cycleHoursUsedPrior, ruleSetKey, exceptions]);
 }
