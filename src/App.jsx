@@ -431,7 +431,7 @@ function DriverViewWithHOS({
       {activeTab === 'history' && (
         <div className="space-y-6">
           <LogHistory
-            onSelectLogSheet={(sheet) => setActiveTab('daily_log')}
+            onSelectLog={(sheet) => setActiveTab('daily_log')}
             onCertifyLog={() => setIsCertModalOpen(true)}
           />
           <EditHistoryPanel

@@ -6,7 +6,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { saveLog, fetchLog, fetchDriverProfile } from '../services/eldService.js';
-import { planRoute } from '../services/routeService.js';
+import { syncLimiter } from '../middleware/rateLimiter.js';
 import { assistAI } from '../services/aiService.js';
 import { validateHOS } from '../services/hosComplianceService.js';
 

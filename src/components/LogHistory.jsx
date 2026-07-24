@@ -1,6 +1,9 @@
+import React from 'react';
+import { Calendar, CheckCircle2, AlertTriangle, Play, Download, Award } from 'lucide-react';
 import { getSyncedDate, formatDateISO } from '../services/timeService';
+import { exportLogToPdf } from '../utils/PdfExportService';
 
-export default function LogHistory({ onSelectLog }) {
+export default function LogHistory({ onSelectLog, onCertifyLog }) {
   const today = getSyncedDate();
   const getOffsetDateISO = (offsetDays) => {
     const d = new Date(today.getTime() + offsetDays * 86400000);
@@ -27,6 +30,16 @@ export default function LogHistory({ onSelectLog }) {
             <p className="text-slate-400 text-xs">Past 7 to 8 days required FMCSA driver log records</p>
           </div>
         </div>
+
+        {onCertifyLog && (
+          <button
+            onClick={onCertifyLog}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-xs"
+          >
+            <Award size={16} />
+            <span>Certify Daily Log</span>
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
