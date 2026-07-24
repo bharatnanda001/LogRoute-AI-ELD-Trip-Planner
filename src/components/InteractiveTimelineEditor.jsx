@@ -10,15 +10,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Undo2, Redo2, ZoomIn, ZoomOut, MapPin, CheckCircle2,
   AlertTriangle, Clock, Edit3, Scissors, Merge, Trash2, RotateCcw,
-  Magnet, ArrowLeftRight,
+  Magnet, ArrowLeftRight, Moon, Bed,
 } from 'lucide-react';
 import BlockInspectorModal from './BlockInspectorModal';
 
 const DUTY_LANES = [
-  { id: 'off_duty', label: '1. OFF DUTY', color: 'bg-slate-200 border-slate-300 text-slate-800 hover:bg-slate-300', barColor: '#94a3b8' },
-  { id: 'sleeper_berth', label: '2. SLEEPER BERTH', color: 'bg-blue-100 border-blue-300 text-blue-950 hover:bg-blue-200', barColor: '#3b82f6' },
+  { id: 'off_duty', label: '1. OFF DUTY 🏠', color: 'bg-slate-200 border-slate-300 text-slate-800 hover:bg-slate-300', barColor: '#94a3b8' },
+  { id: 'sleeper_berth', label: '2. SLEEPER BERTH 🛏️', color: 'bg-blue-100 border-blue-300 text-blue-950 hover:bg-blue-200', barColor: '#3b82f6' },
   { id: 'driving', label: '3. DRIVING 🚛', color: 'bg-rose-200 border-rose-400 text-rose-950 font-bold hover:bg-rose-300', barColor: '#ef4444' },
-  { id: 'on_duty_not_driving', label: '4. ON DUTY', color: 'bg-amber-100 border-amber-300 text-amber-950 hover:bg-amber-200', barColor: '#f59e0b' },
+  { id: 'on_duty_not_driving', label: '4. ON DUTY 📋', color: 'bg-amber-100 border-amber-300 text-amber-950 hover:bg-amber-200', barColor: '#f59e0b' },
 ];
 
 const LANE_HEIGHT = 64;
@@ -164,13 +164,16 @@ export default function InteractiveTimelineEditor({
     haptic([10, 30, 10]);
   }, [blocks, pushHistory]);
 
-  const handleCreateBlock = useCallback((dutyStatus = 'driving') => {
+  const handleCreateBlock = useCallback((dutyStatus = 'driving', durationMins = 60, customAnnotation = null) => {
+    const startM = activeMin > 0 ? activeMin : 480;
+    const endM = Math.min(1440, startM + durationMins);
+    const defaultAnn = dutyStatus === 'sleeper_berth' ? 'Sleeper Berth Rest' : `New ${dutyStatus.replace('_', ' ')} block`;
     const newBlock = {
       id: uid(),
       dutyStatus,
-      startMin: activeMin > 0 ? activeMin : 480,
-      endMin: Math.min(1440, (activeMin > 0 ? activeMin : 480) + 60),
-      annotation: `New ${dutyStatus.replace('_', ' ')} block`,
+      startMin: startM,
+      endMin: endM,
+      annotation: customAnnotation || defaultAnn,
       location: null,
     };
     pushHistory([...blocks, newBlock]);
@@ -441,10 +444,10 @@ export default function InteractiveTimelineEditor({
         {/* Create buttons */}
         <div className="flex items-center gap-2 flex-wrap">
           {[
-            { status: 'driving', label: '+ Driving', bg: 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20' },
-            { status: 'on_duty_not_driving', label: '+ On Duty', bg: 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/20' },
-            { status: 'sleeper_berth', label: '+ Sleeper', bg: 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/20' },
-            { status: 'off_duty', label: '+ Off Duty', bg: 'bg-slate-700 hover:bg-slate-600 shadow-slate-600/20' },
+            { status: 'driving', label: 'Driving', bg: 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20' },
+            { status: 'on_duty_not_driving', label: 'On Duty', bg: 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/20' },
+            { status: 'sleeper_berth', label: 'Sleeper', bg: 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/20' },
+            { status: 'off_duty', label: 'Off Duty', bg: 'bg-slate-700 hover:bg-slate-600 shadow-slate-600/20' },
           ].map(({ status, label, bg }) => (
             <button
               key={status}
@@ -454,6 +457,27 @@ export default function InteractiveTimelineEditor({
               <Plus size={14} /><span>{label}</span>
             </button>
           ))}
+
+          <div className="h-6 w-px bg-slate-300 mx-1 hidden sm:block" />
+
+          {/* Quick Sleeper Berth Presets */}
+          <button
+            onClick={() => handleCreateBlock('sleeper_berth', 480, '8-Hour Sleeper Berth Rest')}
+            className="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition-all shadow-xs"
+            title="Quick add 8-hour Sleeper Berth block for HOS split rest"
+          >
+            <Bed size={14} />
+            <span>+ 8h Sleeper</span>
+          </button>
+
+          <button
+            onClick={() => handleCreateBlock('sleeper_berth', 600, '10-Hour Sleeper Reset')}
+            className="flex items-center gap-1.5 px-3 py-2 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition-all shadow-xs"
+            title="Quick add 10-hour full Sleeper Berth reset block"
+          >
+            <Moon size={14} />
+            <span>+ 10h Reset</span>
+          </button>
         </div>
       </div>
 
