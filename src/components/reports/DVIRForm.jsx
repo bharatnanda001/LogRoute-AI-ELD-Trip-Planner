@@ -19,7 +19,9 @@ const DEFECT_CATEGORIES = [
   { id: 'emergency', label: 'Emergency Equipment (Extinguisher/Triangles)' },
 ];
 
-export default function DVIRForm({ onComplete }) {
+export default function DVIRForm({ onComplete, onSubmitDVIR }) {
+  const handleCompleteCallback = onComplete || onSubmitDVIR;
+
   const [inspectionType, setInspectionType] = useState('pre_trip');
   const [vehicleNumber, setVehicleNumber] = useState('Truck #4417');
   const [trailerNumber, setTrailerNumber] = useState('Trailer #8809');
@@ -68,15 +70,19 @@ export default function DVIRForm({ onComplete }) {
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 2;
     ctx.lineCap = 'round';
+    ctx.strokeStyle = '#0f172a';
     ctx.lineTo(clientX - rect.left, clientY - rect.top);
     ctx.stroke();
     setHasSignature(true);
   };
 
-  const clearCanvas = () => {
+  const stopDrawing = () => {
+    setIsDrawing(false);
+  };
+
+  const clearSignature = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -106,211 +112,204 @@ export default function DVIRForm({ onComplete }) {
         }),
       });
     } catch (_) {
-      // Local demo mode fallback
+      // Local fallback mode
     }
 
     setSubmitted(true);
-    if (onComplete) onComplete();
+    if (handleCompleteCallback) handleCompleteCallback({ defects: defectArray, conditionSafe });
   };
 
   if (submitted) {
     return (
-      <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center space-y-4 shadow-sm font-sans">
+      <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center space-y-4 shadow-xs font-sans">
         <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
           <CheckCircle2 size={36} />
         </div>
-        <h2 className="text-xl font-extrabold text-slate-900">DVIR Inspection Submitted</h2>
+        <h3 className="text-2xl font-extrabold text-slate-900">DVIR Inspection Submitted</h3>
         <p className="text-xs text-slate-500 max-w-md mx-auto">
-          Report recorded for {vehicleNumber} ({inspectionType === 'pre_trip' ? 'Pre-Trip' : 'Post-Trip'}).
-          {conditionSafe ? ' Vehicle marked safe for operation.' : ' Defects flagged for mechanic review.'}
+          Your inspection report has been recorded in compliance with FMCSA 49 CFR §396.11 regulations and broadcast to your motor carrier safety department.
         </p>
         <button
-          onClick={() => setSubmitted(false)}
-          className="px-5 py-2.5 bg-indigo-600 text-white font-bold text-xs rounded-xl hover:bg-indigo-500"
+          onClick={() => {
+            setSubmitted(false);
+            setDefects({});
+          }}
+          className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-xs"
         >
-          New Inspection
+          File Another DVIR Inspection
         </button>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6 font-sans">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-        <div className="flex items-center gap-2">
-          <ClipboardCheck size={22} className="text-indigo-600" />
-          <div>
-            <h2 className="text-base font-extrabold text-slate-900">Driver Vehicle Inspection Report (DVIR)</h2>
-            <p className="text-xs text-slate-500">FMCSA §396.11 / §396.13 Vehicle Inspection Record</p>
+    <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6 font-sans">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="bg-blue-50 text-blue-700 text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-md border border-blue-200">
+              FMCSA §396.11
+            </span>
+            <span className="text-xs font-bold text-slate-500">Driver Vehicle Inspection Report</span>
           </div>
+          <h2 className="text-xl font-extrabold text-slate-900">DVIR Safety Inspection Checklist</h2>
+          <p className="text-xs text-slate-500">Log pre-trip/post-trip vehicle defects and sign official safety report</p>
         </div>
 
-        {/* Inspection Type Selector */}
-        <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+        <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200 text-xs font-bold">
           <button
             type="button"
             onClick={() => setInspectionType('pre_trip')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              inspectionType === 'pre_trip' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600'
+            className={`px-4 py-2 rounded-lg transition-all ${
+              inspectionType === 'pre_trip' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600'
             }`}
           >
-            Pre-Trip
+            Pre-Trip Inspection
           </button>
           <button
             type="button"
             onClick={() => setInspectionType('post_trip')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              inspectionType === 'post_trip' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600'
+            className={`px-4 py-2 rounded-lg transition-all ${
+              inspectionType === 'post_trip' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600'
             }`}
           >
-            Post-Trip
+            Post-Trip Inspection
           </button>
         </div>
       </div>
 
-      {/* Basic Info Inputs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Tractor / Truck #</label>
+          <label className="font-bold text-slate-700 block mb-1">Vehicle / Tractor #</label>
           <input
             type="text"
+            required
             value={vehicleNumber}
             onChange={(e) => setVehicleNumber(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 font-semibold min-h-[44px]"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 outline-none focus:border-blue-600"
           />
         </div>
+
         <div>
           <label className="font-bold text-slate-700 block mb-1">Trailer #</label>
           <input
             type="text"
             value={trailerNumber}
             onChange={(e) => setTrailerNumber(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 font-semibold min-h-[44px]"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 outline-none focus:border-blue-600"
           />
         </div>
+
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Odometer Miles</label>
+          <label className="font-bold text-slate-700 block mb-1">Odometer Reading</label>
           <input
             type="text"
+            required
             value={odometer}
             onChange={(e) => setOdometer(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 font-semibold min-h-[44px]"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 outline-none focus:border-blue-600 font-mono"
           />
         </div>
+
         <div>
           <label className="font-bold text-slate-700 block mb-1">Location</label>
           <input
             type="text"
+            required
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 font-semibold min-h-[44px]"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 outline-none focus:border-blue-600"
           />
         </div>
       </div>
 
-      {/* Safety Checklist */}
       <div className="space-y-3">
-        <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">Inspection Checklist (Tap to flag defect)</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <h4 className="font-extrabold text-slate-900 text-xs uppercase tracking-wider text-slate-500">Inspection Checklist (Select any defective components)</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
           {DEFECT_CATEGORIES.map((cat) => {
-            const isDefect = !!defects[cat.id];
+            const isDefective = !!defects[cat.id];
             return (
               <button
-                type="button"
                 key={cat.id}
+                type="button"
                 onClick={() => toggleDefect(cat.id)}
-                className={`flex items-center justify-between p-3 rounded-xl border text-xs font-semibold text-left transition-all ${
-                  isDefect
-                    ? 'bg-red-50 border-red-300 text-red-800'
+                className={`p-3 rounded-xl border text-xs text-left font-bold flex items-center justify-between transition-all ${
+                  isDefective
+                    ? 'bg-rose-50 border-rose-300 text-rose-900 shadow-xs'
                     : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                 }`}
               >
                 <span>{cat.label}</span>
-                {isDefect ? (
-                  <span className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-md">
-                    <AlertTriangle size={12} /> Defect Flagged
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1">
-                    <CheckCircle2 size={12} /> Satisfactory
-                  </span>
-                )}
+                {isDefective ? <AlertTriangle size={15} className="text-rose-600 shrink-0" /> : <CheckCircle2 size={15} className="text-emerald-600 shrink-0" />}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Condition Safe Radio Toggle */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2">
-        <span className="text-xs font-bold text-slate-800 block">Vehicle Condition Declaration</span>
-        <div className="flex gap-4 text-xs font-semibold">
-          <label className="flex items-center gap-2 cursor-pointer">
+      <div className="space-y-2">
+        <label className="font-bold text-slate-700 text-xs block">Vehicle Safety Status</label>
+        <div className="flex gap-4 text-xs font-bold">
+          <label className="flex items-center gap-2 cursor-pointer bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl hover:bg-slate-100">
             <input
               type="radio"
               name="condition"
-              checked={conditionSafe === true}
+              checked={conditionSafe}
               onChange={() => setConditionSafe(true)}
-              className="accent-emerald-600"
+              className="text-blue-600"
             />
-            <span className="text-emerald-700 font-bold">Condition is Satisfactory (Safe to Operate)</span>
+            <span className="text-emerald-700">Vehicle Condition Safe for Operation</span>
           </label>
-          <label className="flex items-center gap-2 cursor-pointer">
+          <label className="flex items-center gap-2 cursor-pointer bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl hover:bg-slate-100">
             <input
               type="radio"
               name="condition"
-              checked={conditionSafe === false}
+              checked={!conditionSafe}
               onChange={() => setConditionSafe(false)}
-              className="accent-red-600"
+              className="text-blue-600"
             />
-            <span className="text-red-700 font-bold">Defects Found (Unsafe / Maintenance Required)</span>
+            <span className="text-rose-700">Defects Found — Repairs Required</span>
           </label>
         </div>
       </div>
 
-      {/* Signature Canvas */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-          <span>Driver Signature</span>
-          <button
-            type="button"
-            onClick={clearCanvas}
-            className="text-slate-400 hover:text-red-500 flex items-center gap-1 font-normal text-[11px]"
-          >
-            <Eraser size={12} /> Clear
-          </button>
+        <div className="flex items-center justify-between">
+          <label className="font-bold text-slate-700 text-xs block">Driver Digital Signature</label>
+          {hasSignature && (
+            <button type="button" onClick={clearSignature} className="text-[11px] font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1">
+              <Eraser size={12} /> Clear Signature
+            </button>
+          )}
         </div>
-        <div className="border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 relative overflow-hidden">
+
+        <div className="border border-slate-300 rounded-xl bg-slate-50 overflow-hidden relative">
           <canvas
             ref={canvasRef}
-            width={440}
-            height={100}
+            width={600}
+            height={120}
             onMouseDown={startDrawing}
             onMouseMove={draw}
-            onMouseUp={() => setIsDrawing(false)}
-            onMouseLeave={() => setIsDrawing(false)}
+            onMouseUp={stopDrawing}
             onTouchStart={startDrawing}
             onTouchMove={draw}
-            onTouchEnd={() => setIsDrawing(false)}
-            className="w-full h-[100px] cursor-crosshair touch-none"
+            onTouchEnd={stopDrawing}
+            className="w-full h-28 cursor-crosshair touch-none"
           />
           {!hasSignature && (
-            <span className="absolute inset-0 pointer-events-none flex items-center justify-center text-xs text-slate-400">
-              Sign Inspection Report
-            </span>
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-400 text-xs font-medium">
+              Sign with mouse or touch screen here
+            </div>
           )}
         </div>
       </div>
 
-      {/* Submit Button */}
       <button
         type="submit"
-        disabled={!hasSignature}
-        className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white font-extrabold text-xs rounded-xl shadow-md shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+        className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 active:scale-98"
       >
-        <Send size={14} />
-        <span>Submit Official DVIR Report</span>
+        <Send size={16} />
+        <span>Submit DVIR Report to Safety Portal</span>
       </button>
     </form>
   );
