@@ -3,8 +3,9 @@ import React, { useState } from 'react';
 import InteractiveTimelineEditor from './InteractiveTimelineEditor';
 import LogSheetCanvas from './LogSheetCanvas';
 import PlaybackControls from './PlaybackControls';
-import { ShieldCheck, AlertTriangle, Download, Sparkles, FileText, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, Download, Sparkles, FileText, CheckCircle2, Save, Check } from 'lucide-react';
 import { exportLogToPdf } from '../utils/PdfExportService';
+import { saveDriverDailyLog } from '../services/eldApiService';
 import { formatDateISO } from '../services/timeService';
 
 export default function SplitScreenLogView({
@@ -20,6 +21,22 @@ export default function SplitScreenLogView({
   setPlaybackSpeed,
 }) {
   const [isMuted, setIsMuted] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const handleSaveLog = async () => {
+    setIsSaving(true);
+    try {
+      await saveDriverDailyLog(blocks, metadata);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const todayIso = metadata.date || formatDateISO();
   const dayStart = new Date(`${todayIso}T00:00:00Z`);
@@ -89,6 +106,19 @@ export default function SplitScreenLogView({
                   <span>HOS Violation</span>
                 </span>
               )}
+
+              <button
+                onClick={handleSaveLog}
+                disabled={isSaving}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-xs ${
+                  saveSuccess
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20 active:scale-95'
+                }`}
+              >
+                {saveSuccess ? <Check size={14} /> : <Save size={14} />}
+                <span>{saveSuccess ? 'Log Saved!' : isSaving ? 'Saving...' : 'Save Log'}</span>
+              </button>
             </div>
           </div>
 
@@ -118,13 +148,28 @@ export default function SplitScreenLogView({
               </div>
             </div>
 
-            <button
-              onClick={() => exportLogToPdf(blocks, metadata)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-600/20 active:scale-95"
-            >
-              <Download size={14} />
-              <span>Export PDF</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleSaveLog}
+                disabled={isSaving}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 ${
+                  saveSuccess
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20'
+                }`}
+              >
+                {saveSuccess ? <Check size={14} /> : <Save size={14} />}
+                <span>{saveSuccess ? 'Log Saved & Synced!' : isSaving ? 'Saving...' : 'Save Log & Sync'}</span>
+              </button>
+
+              <button
+                onClick={() => exportLogToPdf(blocks, metadata)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-emerald-600/20 active:scale-95"
+              >
+                <Download size={14} />
+                <span>Export PDF</span>
+              </button>
+            </div>
           </div>
 
           {/* Render clean, white SVG LogSheetCanvas with exact 24:00 total and Co-Driver metadata */}
