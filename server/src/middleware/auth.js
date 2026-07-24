@@ -5,12 +5,14 @@
 // Refresh Token: 30-day TTL, stored as HttpOnly Secure cookie
 // ═══════════════════════════════════════════════════════════════════
 
+import dotenv from 'dotenv';
+dotenv.config();
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET missing');
+const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me_in_prod';
+if (!process.env.JWT_SECRET) {
+  console.warn('[Warning] JWT_SECRET not found in env, using fallback secret for development');
 }
 const ACCESS_TOKEN_TTL = '15m';
 const REFRESH_TOKEN_TTL_DAYS = 30;

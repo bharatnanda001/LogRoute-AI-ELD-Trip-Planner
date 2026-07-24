@@ -68,6 +68,7 @@ app.use('/api/', apiLimiter);
 
 // ── Health Check Endpoint for Render ─────────────────────────────
 app.get('/api/health', (req, res) => {
+  res.json({
     status: 'online',
     timestamp: new Date().toISOString(),
     service: 'LogRoute AI ELD Server',

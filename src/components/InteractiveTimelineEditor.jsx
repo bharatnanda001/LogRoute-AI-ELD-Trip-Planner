@@ -10,9 +10,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Undo2, Redo2, ZoomIn, ZoomOut, MapPin, CheckCircle2,
   AlertTriangle, Clock, Edit3, Scissors, Merge, Trash2, RotateCcw,
-  Magnet, ArrowLeftRight, Moon, Bed,
+  Magnet, ArrowLeftRight, Moon, Bed, X,
 } from 'lucide-react';
 import BlockInspectorModal from './BlockInspectorModal';
+import SplitSleeperWizard from './hos/SplitSleeperWizard';
 
 const DUTY_LANES = [
   { id: 'off_duty', label: '1. OFF DUTY 🏠', color: 'bg-slate-200 border-slate-300 text-slate-800 hover:bg-slate-300', barColor: '#94a3b8' },
@@ -69,6 +70,7 @@ export default function InteractiveTimelineEditor({
 }) {
   const [selectedBlock, setSelectedBlock] = useState(null);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
+  const [isSplitWizardOpen, setIsSplitWizardOpen] = useState(false);
   const [historyStack, setHistoryStack] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
   const [zoomIdx, setZoomIdx] = useState(0);
@@ -478,6 +480,15 @@ export default function InteractiveTimelineEditor({
             <Moon size={14} />
             <span>+ 10h Reset</span>
           </button>
+
+          <button
+            onClick={() => setIsSplitWizardOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 rounded-xl text-xs font-bold transition-all shadow-xs"
+            title="Open FMCSA §395.1(g) Split Sleeper Berth Calculation Wizard"
+          >
+            <Moon size={14} />
+            <span>Split Sleeper Wizard</span>
+          </button>
         </div>
       </div>
 
@@ -683,6 +694,21 @@ export default function InteractiveTimelineEditor({
         onUpdateBlock={handleUpdateBlock}
         onDeleteBlock={handleDeleteBlock}
       />
+
+      {/* ── 7. Split Sleeper Berth Calculation Wizard Modal ──────── */}
+      {isSplitWizardOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="max-w-2xl w-full relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setIsSplitWizardOpen(false)}
+              className="absolute top-4 right-4 z-10 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+            >
+              <X size={20} />
+            </button>
+            <SplitSleeperWizard />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
