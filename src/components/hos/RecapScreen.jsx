@@ -179,7 +179,7 @@ export default function RecapScreen({
             <p className="text-xs text-slate-500">FMCSA 70-Hour / 8-Day Cycle Recap Table</p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-700 bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-1 rounded-xl font-mono">
+            <span className="text-xs font-bold bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-1 rounded-xl font-mono">
               +{hoursRegainedMidnight.toFixed(1)} hrs Regained at Midnight
             </span>
             <span className="text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 px-3 py-1 rounded-xl font-mono">

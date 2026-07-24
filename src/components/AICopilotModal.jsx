@@ -43,7 +43,7 @@ export default function AICopilotModal({ isOpen, onClose, hosContext = {}, tripC
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-purple-500/30 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col h-[560px]">
+      <div className="bg-slate-900 border border-purple-500/30 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col h-140">
         {/* Header */}
         <div className="bg-linear-to-r from-purple-950 via-slate-900 to-indigo-950 p-4 border-b border-purple-500/20 flex items-center justify-between">
           <div className="flex items-center gap-3">

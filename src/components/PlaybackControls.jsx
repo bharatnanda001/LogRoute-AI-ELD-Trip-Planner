@@ -104,7 +104,7 @@ export default function PlaybackControls({
       </div>
 
       {/* Live Time Range Slider */}
-      <div className="flex-1 min-w-[240px] flex items-center gap-3">
+      <div className="flex-1 min-w-60 flex items-center gap-3">
         <span className="text-xs font-mono font-bold text-indigo-600 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-lg">
           {minToTimeStr(activeMin)} HRS
         </span>

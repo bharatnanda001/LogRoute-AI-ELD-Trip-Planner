@@ -138,11 +138,6 @@ export default function InteractiveTimelineEditor({
       // Escape — close context menu
       if (e.key === 'Escape') {
         setContextMenu(null);
-        setSelectedBlock(null);
-      }
-      // S — split selected block at midpoint
-      if (e.key === 's' && !e.ctrlKey && !e.metaKey && selectedBlock) {
-        handleSplitBlock(selectedBlock);
       }
     };
     window.addEventListener('keydown', handler);
@@ -151,278 +146,233 @@ export default function InteractiveTimelineEditor({
 
   // Close context menu on outside click
   useEffect(() => {
-    const handler = () => setContextMenu(null);
-    window.addEventListener('click', handler);
-    return () => window.removeEventListener('click', handler);
+    const closeMenu = () => setContextMenu(null);
+    window.addEventListener('click', closeMenu);
+    return () => window.removeEventListener('click', closeMenu);
   }, []);
 
-  // ── Block Operations ────────────────────────────────────────────
+  // ── Block Mutations ─────────────────────────────────────────────
+  const handleUpdateBlock = useCallback((updated) => {
+    const nextBlocks = blocks.map((b) => (b.id === updated.id ? updated : b));
+    pushHistory(nextBlocks);
+    setSelectedBlock(updated);
+  }, [blocks, pushHistory]);
+
+  const handleDeleteBlock = useCallback((blockId) => {
+    const nextBlocks = blocks.filter((b) => b.id !== blockId);
+    pushHistory(nextBlocks);
+    haptic([10, 30, 10]);
+  }, [blocks, pushHistory]);
+
   const handleCreateBlock = useCallback((dutyStatus = 'driving') => {
     const newBlock = {
       id: uid(),
       dutyStatus,
-      startMin: 480,
-      endMin: 720,
-      annotation: 'New ' + (DUTY_LANES.find(l => l.id === dutyStatus)?.label || 'Segment'),
+      startMin: activeMin > 0 ? activeMin : 480,
+      endMin: Math.min(1440, (activeMin > 0 ? activeMin : 480) + 60),
+      annotation: `New ${dutyStatus.replace('_', ' ')} block`,
+      location: null,
     };
     pushHistory([...blocks, newBlock]);
+    setSelectedBlock(newBlock);
+    setIsInspectorOpen(true);
     haptic(15);
-  }, [blocks, pushHistory]);
+  }, [activeMin, blocks, pushHistory]);
 
-  const handleUpdateBlock = useCallback((updated) => {
-    pushHistory(blocks.map((b) => (b.id === updated.id ? updated : b)));
-  }, [blocks, pushHistory]);
+  const handleSplitBlock = useCallback((block, splitMin) => {
+    const minToUse = splitMin ?? Math.round((block.startMin + block.endMin) / 2);
+    if (minToUse <= block.startMin || minToUse >= block.endMin) return;
 
-  const handleDeleteBlock = useCallback((id) => {
-    pushHistory(blocks.filter((b) => b.id !== id));
-    haptic([10, 30, 10]);
-  }, [blocks, pushHistory]);
+    const b1 = { ...block, id: uid(), endMin: minToUse };
+    const b2 = { ...block, id: uid(), startMin: minToUse, annotation: `${block.annotation || 'Segment'} (Pt 2)` };
 
-  const handleSplitBlock = useCallback((b, atMinute) => {
-    const midMin = atMinute
-      ? snap15(atMinute)
-      : snap15((b.startMin + b.endMin) / 2);
-
-    if (midMin <= b.startMin + 14 || midMin >= b.endMin - 14) return;
-
-    const b1 = { ...b, endMin: midMin, id: uid() };
-    const b2 = { ...b, startMin: midMin, id: uid(), annotation: 'Split segment' };
-    pushHistory(blocks.flatMap((item) => (item.id === b.id ? [b1, b2] : [item])));
-    haptic([5, 20, 5, 20]);
+    const nextBlocks = blocks.flatMap((b) => (b.id === block.id ? [b1, b2] : [b]));
+    pushHistory(nextBlocks);
+    haptic([10, 20]);
   }, [blocks, pushHistory]);
 
   const handleMergeAdjacent = useCallback((block) => {
     const sorted = [...blocks].sort((a, b) => a.startMin - b.startMin);
     const idx = sorted.findIndex((b) => b.id === block.id);
+    if (idx === -1) return;
 
-    // Try merge with next block of same status
-    if (idx < sorted.length - 1 && sorted[idx + 1].dutyStatus === block.dutyStatus) {
-      const next = sorted[idx + 1];
-      const merged = {
-        ...block,
-        id: uid(),
-        endMin: next.endMin,
-        annotation: block.annotation || next.annotation,
-      };
-      pushHistory(blocks.filter((b) => b.id !== block.id && b.id !== next.id).concat(merged));
-      haptic(20);
-      return;
-    }
-
-    // Try merge with previous block of same status
-    if (idx > 0 && sorted[idx - 1].dutyStatus === block.dutyStatus) {
-      const prev = sorted[idx - 1];
-      const merged = {
-        ...prev,
-        id: uid(),
-        endMin: block.endMin,
-        annotation: prev.annotation || block.annotation,
-      };
-      pushHistory(blocks.filter((b) => b.id !== block.id && b.id !== prev.id).concat(merged));
-      haptic(20);
+    const nextBlock = sorted[idx + 1];
+    if (nextBlock && nextBlock.dutyStatus === block.dutyStatus) {
+      const merged = { ...block, endMin: nextBlock.endMin };
+      const nextBlocks = blocks.filter((b) => b.id !== nextBlock.id).map((b) => (b.id === block.id ? merged : b));
+      pushHistory(nextBlocks);
+      haptic(15);
     }
   }, [blocks, pushHistory]);
 
-  const handleChangeStatus = useCallback((blockId, newStatus) => {
-    pushHistory(blocks.map((b) => (b.id === blockId ? { ...b, dutyStatus: newStatus } : b)));
-    haptic(10);
-  }, [blocks, pushHistory]);
-
-  // ── Drag & Resize ───────────────────────────────────────────────
-  const handlePointerDown = useCallback((e, block, type) => {
+  // ── Drag & Resize Pointer Handlers ──────────────────────────────
+  const handlePointerDown = (e, block, mode = 'move') => {
     e.stopPropagation();
-    e.preventDefault();
+    e.target.setPointerCapture(e.pointerId);
     setDragState({
       blockId: block.id,
-      type,
+      mode, // 'move' | 'resize_left' | 'resize_right'
       startX: e.clientX,
       initialStartMin: block.startMin,
       initialEndMin: block.endMin,
+      pointerId: e.pointerId,
     });
-    haptic(5);
-  }, []);
+  };
 
-  const handlePointerMove = useCallback((e) => {
-    if (!dragState || !containerRef.current) return;
-    const deltaX = e.clientX - dragState.startX;
-    const rawDeltaMin = (deltaX / gridW) * 1440;
-    const deltaMin = snapEnabled ? snap15(rawDeltaMin) : Math.round(rawDeltaMin);
+  const handlePointerMove = (e) => {
+    if (!dragState) return;
+    const deltaPx = e.clientX - dragState.startX;
+    const deltaMin = pxToMin(deltaPx);
 
-    const nextBlocks = blocks.map((b) => {
-      if (b.id !== dragState.blockId) return b;
-      if (dragState.type === 'move') {
-        const span = dragState.initialEndMin - dragState.initialStartMin;
-        const newStart = Math.max(0, Math.min(1440 - span, dragState.initialStartMin + deltaMin));
-        return { ...b, startMin: newStart, endMin: newStart + span };
-      }
-      if (dragState.type === 'resize_left') {
-        const newStart = Math.max(0, Math.min(b.endMin - 15, dragState.initialStartMin + deltaMin));
-        return { ...b, startMin: newStart };
-      }
-      if (dragState.type === 'resize_right') {
-        const newEnd = Math.max(b.startMin + 15, Math.min(1440, dragState.initialEndMin + deltaMin));
-        return { ...b, endMin: newEnd };
-      }
-      return b;
-    });
+    const block = blocks.find((b) => b.id === dragState.blockId);
+    if (!block) return;
 
+    let newStart = dragState.initialStartMin;
+    let newEnd = dragState.initialEndMin;
+    const duration = dragState.initialEndMin - dragState.initialStartMin;
+
+    if (dragState.mode === 'move') {
+      newStart = Math.max(0, Math.min(1440 - duration, dragState.initialStartMin + deltaMin));
+      newEnd = newStart + duration;
+    } else if (dragState.mode === 'resize_left') {
+      newStart = Math.max(0, Math.min(dragState.initialEndMin - 15, dragState.initialStartMin + deltaMin));
+    } else if (dragState.mode === 'resize_right') {
+      newEnd = Math.max(dragState.initialStartMin + 15, Math.min(1440, dragState.initialEndMin + deltaMin));
+    }
+
+    if (snapEnabled) {
+      newStart = snap15(newStart);
+      newEnd = snap15(newEnd);
+    }
+
+    const updated = { ...block, startMin: newStart, endMin: newEnd };
+    const nextBlocks = blocks.map((b) => (b.id === block.id ? updated : b));
     onChangeBlocks(nextBlocks);
-  }, [dragState, blocks, gridW, snapEnabled, onChangeBlocks]);
+  };
 
-  const handlePointerUp = useCallback(() => {
-    if (dragState) {
-      pushHistory(blocks);
-      setDragState(null);
-    }
-  }, [dragState, blocks, pushHistory]);
+  const handlePointerUp = (e) => {
+    if (!dragState) return;
+    try {
+      e.target.releasePointerCapture(dragState.pointerId);
+    } catch (_) { /* ignore */ }
+    setDragState(null);
+    haptic(8);
+  };
 
-  // ── Pinch Zoom (Touch) ─────────────────────────────────────────
-  const handleTouchStart = useCallback((e) => {
-    if (e.touches.length === 2) {
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      setPinchStartDist(Math.hypot(dx, dy));
-      setPinchStartZoom(zoomIdx);
-    }
-  }, [zoomIdx]);
+  // ── Context Menu & Double-Tap ────────────────────────────────────
+  const handleContextMenu = (e, block) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, block });
+    setSelectedBlock(block);
+    haptic(20);
+  };
 
-  const handleTouchMove = useCallback((e) => {
-    if (e.touches.length === 2 && pinchStartDist) {
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      const currentDist = Math.hypot(dx, dy);
-      const ratio = currentDist / pinchStartDist;
-
-      if (ratio > 1.3 && pinchStartZoom < ZOOM_LEVELS.length - 1) {
-        setZoomIdx(pinchStartZoom + 1);
-        setPinchStartDist(currentDist);
-        setPinchStartZoom(pinchStartZoom + 1);
-        haptic(10);
-      } else if (ratio < 0.7 && pinchStartZoom > 0) {
-        setZoomIdx(pinchStartZoom - 1);
-        setPinchStartDist(currentDist);
-        setPinchStartZoom(pinchStartZoom - 1);
-        haptic(10);
-      }
-    }
-  }, [pinchStartDist, pinchStartZoom]);
-
-  const handleTouchEnd = useCallback(() => {
-    setPinchStartDist(null);
-  }, []);
-
-  // ── Double-Tap Detection ────────────────────────────────────────
-  const handleBlockTap = useCallback((block, e) => {
+  const handleBlockTap = (block, e) => {
     const now = Date.now();
-    if (lastTap.id === block.id && now - lastTap.time < 350) {
-      // Double tap → open inspector
+    if (lastTap.id === block.id && now - lastTap.time < 300) {
+      // Double tap -> Open Inspector
       setSelectedBlock(block);
       setIsInspectorOpen(true);
-      haptic(15);
-      setLastTap({ id: null, time: 0 });
+      haptic([10, 20]);
     } else {
       setSelectedBlock(block);
-      setLastTap({ id: block.id, time: now });
     }
-  }, [lastTap]);
+    setLastTap({ id: block.id, time: now });
+  };
 
-  // ── Context Menu (Long Press / Right Click) ─────────────────────
-  const handleContextMenu = useCallback((e, block) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setContextMenu({ x: e.clientX, y: e.clientY, block });
-    haptic(15);
-  }, []);
-
-  // Long press timer for touch devices
+  // Touch Long-Press for mobile context menu
   const longPressTimer = useRef(null);
-  const handleLongPressStart = useCallback((e, block) => {
+  const handleLongPressStart = (e, block) => {
     longPressTimer.current = setTimeout(() => {
-      const touch = e.touches?.[0] || e;
-      setContextMenu({ x: touch.clientX, y: touch.clientY, block });
-      haptic([10, 30, 10]);
+      setContextMenu({ x: e.touches ? e.touches[0].clientX : e.clientX, y: e.touches ? e.touches[0].clientY : e.clientY, block });
+      haptic([30, 50]);
     }, 500);
-  }, []);
+  };
 
-  const handleLongPressEnd = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
+  const handleLongPressEnd = () => {
+    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  };
+
+  // Pinch Zoom gesture handling for mobile touchscreens
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      setPinchStartDist(dist);
+      setPinchStartZoom(zoomIdx);
     }
-  }, []);
+  };
 
-  // ── Computed totals ─────────────────────────────────────────────
+  const handleTouchMove = (e) => {
+    if (e.touches.length === 2 && pinchStartDist) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const ratio = dist / pinchStartDist;
+      if (ratio > 1.25 && pinchStartZoom < ZOOM_LEVELS.length - 1) {
+        setZoomIdx(pinchStartZoom + 1);
+        setPinchStartDist(dist);
+        haptic(10);
+      } else if (ratio < 0.75 && pinchStartZoom > 0) {
+        setZoomIdx(pinchStartZoom - 1);
+        setPinchStartDist(dist);
+        haptic(10);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setPinchStartDist(null);
+  };
+
+  // ── Totals Calculation per Duty Lane ─────────────────────────────
   const totals = useMemo(() => {
-    const t = { off_duty: 0, sleeper_berth: 0, driving: 0, on_duty_not_driving: 0 };
-    blocks.forEach((b) => {
-      const mins = Math.max(0, (b.endMin || 0) - (b.startMin || 0));
-      if (t[b.dutyStatus] !== undefined) t[b.dutyStatus] += mins;
-    });
-    const acc = Object.values(t).reduce((a, b) => a + b, 0);
-    if (acc < 1440) t.off_duty += 1440 - acc;
-    return t;
+    const res = { off_duty: 0, sleeper_berth: 0, driving: 0, on_duty_not_driving: 0 };
+    for (const b of blocks) {
+      const dur = Math.max(0, (b.endMin || 0) - (b.startMin || 0));
+      const st = b.dutyStatus || 'off_duty';
+      if (res[st] !== undefined) res[st] += dur;
+    }
+    return res;
   }, [blocks]);
-
-  const grandTotalMins = Object.values(totals).reduce((a, b) => a + b, 0);
-
-  // Compliance border color
-  const compBorder = complianceStatus === 'violation'
-    ? 'border-red-400 shadow-red-100'
-    : complianceStatus === 'warning'
-      ? 'border-amber-400 shadow-amber-100'
-      : 'border-slate-200';
 
   return (
     <div
-      className={`bg-white border-2 rounded-2xl p-4 md:p-6 shadow-sm space-y-6 select-none font-sans transition-colors ${compBorder}`}
+      className="space-y-4 font-sans select-none"
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* ── 1. Header & Driver Metadata ──────────────────────────── */}
-      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-200 pb-3 flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <Edit3 size={18} className="text-indigo-600" />
-            <h3 className="font-extrabold text-slate-800 text-sm">Driver & Vehicle Metadata (FMCSA Form RODS)</h3>
-          </div>
-
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl shadow-xs">
-              <span className="text-xs font-semibold text-slate-500">24-Hr:</span>
-              <span className={`font-mono font-extrabold text-sm ${grandTotalMins === 1440 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                {Math.floor(grandTotalMins / 60)}:{String(grandTotalMins % 60).padStart(2, '0')} / 24:00
-              </span>
-            </div>
-
-            {grandTotalMins === 1440 ? (
-              <span className="px-3 py-1.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-xl flex items-center gap-1">
-                <CheckCircle2 size={14} /> Validated
-              </span>
-            ) : (
-              <span className="px-3 py-1.5 bg-amber-100 text-amber-800 text-xs font-bold rounded-xl flex items-center gap-1">
-                <AlertTriangle size={14} /> Adjusting
-              </span>
-            )}
-          </div>
+      {/* ── 1. Metadata Quick Editor Bar ─────────────────────────── */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+          <span className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+            Driver & Carrier Metadata (FMCSA §395.8)
+          </span>
+          <span className="text-[10px] font-bold text-slate-500 font-mono">
+            {metadata.date || '2026-07-23'}
+          </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
           {[
-            { key: 'driver', label: 'Driver Name', placeholder: 'John Smith' },
-            { key: 'carrier', label: 'Carrier Name', placeholder: 'LogRoute AI Fleet LLC' },
-            { key: 'vehicle', label: 'Vehicle / Trailer #', placeholder: 'Truck #4417 / Trailer #8809' },
-            { key: 'shippingDoc', label: 'Shipping Doc / BOL #', placeholder: 'BOL-99210-A' },
-          ].map(({ key, label, placeholder }) => (
+            { label: 'Driver', key: 'driver', placeholder: 'John Smith' },
+            { label: 'Carrier', key: 'carrier', placeholder: 'ABC Logistics LLC' },
+            { label: 'Vehicle #', key: 'vehicle', placeholder: 'Tractor #T-108' },
+            { label: 'Shipping Doc #', key: 'shippingDoc', placeholder: 'BOL #88410' },
+          ].map(({ label, key, placeholder }) => (
             <div key={key}>
               <label className="font-bold text-slate-700 block mb-1">{label}</label>
               <input
                 type="text"
                 value={metadata[key] || placeholder}
                 onChange={(e) => onUpdateMetadata && onUpdateMetadata({ ...metadata, [key]: e.target.value })}
-                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 outline-none focus:border-indigo-500 font-semibold min-h-[48px]"
+                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-slate-900 outline-none focus:border-indigo-500 font-semibold min-h-12"
               />
             </div>
           ))}
@@ -436,7 +386,7 @@ export default function InteractiveTimelineEditor({
           <button
             onClick={handleUndo}
             disabled={historyStack.length === 0}
-            className="px-3 py-2.5 bg-white hover:bg-slate-100 disabled:opacity-40 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 min-h-[48px] transition-colors"
+            className="px-3 py-2.5 bg-white hover:bg-slate-100 disabled:opacity-40 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 min-h-12 transition-colors"
             title="Undo (Ctrl+Z)"
           >
             <Undo2 size={16} /><span>Undo</span>
@@ -444,7 +394,7 @@ export default function InteractiveTimelineEditor({
           <button
             onClick={handleRedo}
             disabled={redoStack.length === 0}
-            className="px-3 py-2.5 bg-white hover:bg-slate-100 disabled:opacity-40 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 min-h-[48px] transition-colors"
+            className="px-3 py-2.5 bg-white hover:bg-slate-100 disabled:opacity-40 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 min-h-12 transition-colors"
             title="Redo (Ctrl+Shift+Z)"
           >
             <Redo2 size={16} /><span>Redo</span>
@@ -455,7 +405,7 @@ export default function InteractiveTimelineEditor({
           {/* Snap toggle */}
           <button
             onClick={() => { setSnapEnabled(!snapEnabled); haptic(5); }}
-            className={`px-3 py-2.5 border rounded-xl text-xs font-semibold flex items-center gap-1.5 min-h-[48px] transition-colors ${
+            className={`px-3 py-2.5 border rounded-xl text-xs font-semibold flex items-center gap-1.5 min-h-12 transition-colors ${
               snapEnabled ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-slate-200 text-slate-500'
             }`}
             title="Toggle 15-min snap"
@@ -467,7 +417,7 @@ export default function InteractiveTimelineEditor({
           <div className="h-6 w-px bg-slate-300 mx-1" />
 
           {/* Zoom controls */}
-          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2 py-1.5 min-h-[48px]">
+          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2 py-1.5 min-h-12">
             <button
               onClick={() => { setZoomIdx(Math.max(0, zoomIdx - 1)); haptic(5); }}
               disabled={zoomIdx === 0}
@@ -475,7 +425,7 @@ export default function InteractiveTimelineEditor({
             >
               <ZoomOut size={16} className="text-slate-500" />
             </button>
-            <span className="font-mono text-xs font-bold text-slate-800 min-w-[40px] text-center">
+            <span className="font-mono text-xs font-bold text-slate-800 min-w-10 text-center">
               {zoom.label}
             </span>
             <button
@@ -499,7 +449,7 @@ export default function InteractiveTimelineEditor({
             <button
               key={status}
               onClick={() => handleCreateBlock(status)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 text-white rounded-xl text-xs font-extrabold transition-all shadow-md min-h-[48px] active:scale-95 ${bg}`}
+              className={`flex items-center gap-1.5 px-4 py-2.5 text-white rounded-xl text-xs font-extrabold transition-all shadow-md min-h-12 active:scale-95 ${bg}`}
             >
               <Plus size={14} /><span>{label}</span>
             </button>
@@ -511,7 +461,7 @@ export default function InteractiveTimelineEditor({
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-50/50 p-4 relative">
         <div ref={containerRef} style={{ width: gridW + 160 }} className="relative select-none">
           {/* Time axis */}
-          <div className="flex items-center mb-2 pl-[140px]">
+          <div className="flex items-center mb-2 pl-35">
             {Array.from({ length: 25 }, (_, i) => (
               <div
                 key={`hdr-${i}`}
@@ -525,7 +475,7 @@ export default function InteractiveTimelineEditor({
 
           {/* Active time cursor */}
           <div
-            className="absolute top-0 bottom-0 w-[2px] bg-indigo-600 z-30 pointer-events-none transition-all duration-75"
+            className="absolute top-0 bottom-0 w-0.5 bg-indigo-600 z-30 pointer-events-none transition-all duration-75"
             style={{ left: 140 + minToPx(activeMin) }}
           >
             <div className="w-3 h-3 bg-indigo-600 rounded-full -translate-x-1/3 -translate-y-1/2 shadow-md" />
@@ -536,12 +486,12 @@ export default function InteractiveTimelineEditor({
             {DUTY_LANES.map((lane) => {
               const laneBlocks = blocks.filter((b) => (b.dutyStatus || 'off_duty') === lane.id);
               return (
-                <div key={lane.id} className="flex items-center h-[64px] relative border-b border-slate-200/80">
+                <div key={lane.id} className="flex items-center h-16 relative border-b border-slate-200/80">
                   {/* Lane label */}
                   <button
                     type="button"
                     onClick={() => handleCreateBlock(lane.id)}
-                    className="w-[140px] text-xs font-bold text-slate-800 text-left hover:text-indigo-600 shrink-0 pr-3 font-sans transition-colors"
+                    className="w-35 text-xs font-bold text-slate-800 text-left hover:text-indigo-600 shrink-0 pr-3 font-sans transition-colors"
                     title={`Tap to add ${lane.label} block`}
                   >
                     {lane.label}
@@ -579,7 +529,7 @@ export default function InteractiveTimelineEditor({
                           }}
                           onPointerUp={handleLongPressEnd}
                           onPointerCancel={handleLongPressEnd}
-                          className={`absolute top-1 bottom-1 rounded-xl border shadow-sm p-2 flex items-center justify-between cursor-grab active:cursor-grabbing transition-all min-h-[48px] ${
+                          className={`absolute top-1 bottom-1 rounded-xl border shadow-sm p-2 flex items-center justify-between cursor-grab active:cursor-grabbing transition-all min-h-12 ${
                             lane.color
                           } ${isDragging ? 'ring-2 ring-indigo-500 scale-[1.02] z-20 shadow-md' : 'z-10'} ${
                             isSelected && !isDragging ? 'ring-2 ring-indigo-400 z-15' : ''
@@ -640,7 +590,7 @@ export default function InteractiveTimelineEditor({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.12 }}
-            className="fixed z-50 bg-white border border-slate-200 rounded-xl shadow-xl py-2 min-w-[200px]"
+            className="fixed z-50 bg-white border border-slate-200 rounded-xl shadow-xl py-2 min-w-50"
             style={{ left: contextMenu.x, top: contextMenu.y }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -651,68 +601,51 @@ export default function InteractiveTimelineEditor({
               </p>
             </div>
 
-            {/* Edit */}
             <button
               onClick={() => {
                 setSelectedBlock(contextMenu.block);
                 setIsInspectorOpen(true);
                 setContextMenu(null);
               }}
-              className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2 transition-colors"
+              className="w-full text-left px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
             >
-              <Edit3 size={14} /> Edit Block
+              <Edit3 size={14} className="text-indigo-600" />
+              <span>Inspect & Edit Details</span>
             </button>
 
-            {/* Split */}
             <button
               onClick={() => {
                 handleSplitBlock(contextMenu.block);
                 setContextMenu(null);
               }}
-              className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2 transition-colors"
+              className="w-full text-left px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
             >
-              <Scissors size={14} /> Split Block
+              <Scissors size={14} className="text-amber-600" />
+              <span>Split Segment in Half</span>
             </button>
 
-            {/* Merge */}
             <button
               onClick={() => {
                 handleMergeAdjacent(contextMenu.block);
                 setContextMenu(null);
               }}
-              className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 flex items-center gap-2 transition-colors"
+              className="w-full text-left px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
             >
-              <Merge size={14} /> Merge Adjacent
+              <Merge size={14} className="text-blue-600" />
+              <span>Merge with Next Block</span>
             </button>
 
-            <div className="h-px bg-slate-100 my-1" />
+            <div className="my-1 border-t border-slate-100" />
 
-            {/* Change status submenu */}
-            {DUTY_LANES.filter(l => l.id !== contextMenu.block.dutyStatus).map((lane) => (
-              <button
-                key={lane.id}
-                onClick={() => {
-                  handleChangeStatus(contextMenu.block.id, lane.id);
-                  setContextMenu(null);
-                }}
-                className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
-              >
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: lane.barColor }} />
-                Change to {lane.label.replace(/^\d\.\s/, '')}
-              </button>
-            ))}
-
-            <div className="h-px bg-slate-100 my-1" />
-
-            {/* Delete */}
             <button
               onClick={() => {
                 handleDeleteBlock(contextMenu.block.id);
                 setContextMenu(null);
               }}
-              className="w-full px-3 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
+              className="w-full text-left px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2"
             >
-              <Trash2 size={14} /> Delete Block
+              <Trash2 size={14} />
+              <span>Delete Segment</span>
             </button>
           </motion.div>
         )}
@@ -720,12 +653,11 @@ export default function InteractiveTimelineEditor({
 
       {/* ── 6. Block Inspector Modal ─────────────────────────────── */}
       <BlockInspectorModal
-        block={selectedBlock}
         isOpen={isInspectorOpen}
         onClose={() => setIsInspectorOpen(false)}
-        onUpdate={handleUpdateBlock}
-        onDelete={handleDeleteBlock}
-        onSplit={handleSplitBlock}
+        block={selectedBlock}
+        onUpdateBlock={handleUpdateBlock}
+        onDeleteBlock={handleDeleteBlock}
       />
     </div>
   );

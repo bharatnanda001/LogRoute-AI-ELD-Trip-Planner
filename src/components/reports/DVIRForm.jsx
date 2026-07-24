@@ -224,7 +224,7 @@ export default function DVIRForm({ onComplete, onSubmitDVIR }) {
       </div>
 
       <div className="space-y-3">
-        <h4 className="font-extrabold text-slate-900 text-xs uppercase tracking-wider text-slate-500">Inspection Checklist (Select any defective components)</h4>
+        <h4 className="font-extrabold text-xs uppercase tracking-wider text-slate-500">Inspection Checklist (Select any defective components)</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
           {DEFECT_CATEGORIES.map((cat) => {
             const isDefective = !!defects[cat.id];
