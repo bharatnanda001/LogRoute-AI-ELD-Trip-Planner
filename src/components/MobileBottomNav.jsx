@@ -2,7 +2,7 @@
 import React from 'react';
 import { LayoutDashboard, Compass, FileText, Map, User } from 'lucide-react';
 
-export default function MobileBottomNav({ activeTab, onTabChange }) {
+export default function MobileBottomNav({ activeTab, onTabChange, onSelectTab }) {
   const tabs = [
     { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
     { id: 'trip_planner', label: 'Trips', icon: Compass },
@@ -10,6 +10,8 @@ export default function MobileBottomNav({ activeTab, onTabChange }) {
     { id: 'map', label: 'Map', icon: Map },
     { id: 'history', label: 'History', icon: User },
   ];
+
+  const handleTabSelect = onSelectTab || onTabChange;
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-950/95 border-t border-slate-800/90 backdrop-blur-lg px-2 py-2">
@@ -20,7 +22,7 @@ export default function MobileBottomNav({ activeTab, onTabChange }) {
           return (
             <button
               key={tab.id}
-              onClick={() => onTabChange(tab.id)}
+              onClick={() => handleTabSelect && handleTabSelect(tab.id)}
               className={`flex flex-col items-center gap-1 min-w-14 min-h-11 justify-center rounded-xl transition-all ${
                 isActive ? 'text-indigo-400 font-bold bg-indigo-500/10' : 'text-slate-400 hover:text-slate-200'
               }`}

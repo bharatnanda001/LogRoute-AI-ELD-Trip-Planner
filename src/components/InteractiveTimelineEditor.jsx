@@ -226,6 +226,7 @@ export default function InteractiveTimelineEditor({
 
   const handlePointerMove = (e) => {
     if (!dragState) return;
+    handleLongPressEnd();
     const deltaPx = e.clientX - dragState.startX;
     const deltaMin = pxToMin(deltaPx);
 
@@ -555,7 +556,7 @@ export default function InteractiveTimelineEditor({
                       return (
                         <div
                           key={block.id}
-                          style={{ left: leftPx, width: widthPx }}
+                          style={{ left: leftPx, width: widthPx, touchAction: 'none' }}
                           onClick={(e) => { e.stopPropagation(); handleBlockTap(block, e); }}
                           onContextMenu={(e) => handleContextMenu(e, block)}
                           onPointerDown={(e) => {
@@ -564,7 +565,7 @@ export default function InteractiveTimelineEditor({
                           }}
                           onPointerUp={handleLongPressEnd}
                           onPointerCancel={handleLongPressEnd}
-                          className={`absolute top-1 bottom-1 rounded-xl border shadow-sm p-2 flex items-center justify-between cursor-grab active:cursor-grabbing transition-all min-h-12 ${
+                          className={`absolute top-1 bottom-1 rounded-xl border shadow-sm p-2 flex items-center justify-between cursor-grab active:cursor-grabbing transition-all min-h-12 touch-none select-none ${
                             lane.color
                           } ${isDragging ? 'ring-2 ring-indigo-500 scale-[1.02] z-20 shadow-md' : 'z-10'} ${
                             isSelected && !isDragging ? 'ring-2 ring-indigo-400 z-15' : ''

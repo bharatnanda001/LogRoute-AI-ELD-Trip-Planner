@@ -131,7 +131,7 @@ export default function Navbar({
                 }`}
               >
                 <UserCheck size={14} />
-                <span>Dispatcher / Admin</span>
+                <span className="hidden md:inline">Dispatcher / Admin</span>
               </button>
               <button
                 onClick={() => onRoleChange('driver')}
@@ -142,7 +142,7 @@ export default function Navbar({
                 }`}
               >
                 <Truck size={14} />
-                <span>Driver View</span>
+                <span className="hidden md:inline">Driver View</span>
               </button>
             </div>
           ) : (
